@@ -1,0 +1,19 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ServiceCard from '../components/ServiceCard.astro';
+import services from '../content/data/services.json';
+---
+<BaseLayout title="Servizi Offerti" description="Elenco completo dei servizi di manutenzione casa: idraulico, elettricista, riscaldamento, spurgo, edilizia, fabbro.">
+    <div class="container">
+        <h1>I Nostri Servizi di Manutenzione</h1>
+        <p>Offriamo una gamma completa di servizi per mantenere la tua casa efficiente e sicura. Operiamo su tutto il territorio nazionale.</p>
+
+        <div class="services-grid margin-top-large">
+            {services.map(service => (
+                <ServiceCard name={service.name} description={service.description} icon={service.icon} />
+            ))}
+        </div>
+
+        <p class="margin-top-large text-center">Hai bisogno di un servizio specifico non elencato? <a href="mailto:info@manutenzionecasapro.it">Contattaci</a> per discutere le tue esigenze.</p>
+    </div>
+</BaseLayout>

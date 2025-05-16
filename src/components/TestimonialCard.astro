@@ -1,0 +1,11 @@
+---
+interface Props {
+    text: string;
+    author: string;
+}
+const { text, author } = Astro.props;
+---
+<div class="testimonial-card">
+    <p class="testimonial-text">{text}</p>
+    <p class="testimonial-author">- {author}</p>
+</div>

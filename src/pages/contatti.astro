@@ -1,0 +1,130 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+<BaseLayout title="Contatti" description="Contattaci per informazioni sul nostro servizio di manutenzione casa in abbonamento.">
+    <div class="container">
+        <h1 class="text-center">Contattaci</h1>
+        <p class="text-center margin-bottom-large">
+            Hai domande o vuoi saperne di più sui nostri servizi? Compila il modulo sottostante e ti risponderemo il prima possibile.
+        </p>
+
+        <form name="contact" method="POST" data-netlify="true" data-netlify-honeypot="bot-field" class="contact-form">
+            <input type="hidden" name="form-name" value="contact" />
+            <p class="hidden" style="display:none;">
+                <label>Non compilare questo campo se sei umano: <input name="bot-field"></label>
+            </p>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="nome">Nome</label>
+                    <input type="text" id="nome" name="nome" required>
+                </div>
+                <div class="form-group">
+                    <label for="cognome">Cognome</label>
+                    <input type="text" id="cognome" name="cognome" required>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="telefono">Telefono</label>
+                    <input type="tel" id="telefono" name="telefono">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="oggetto">Oggetto</label>
+                <input type="text" id="oggetto" name="oggetto" required>
+            </div>
+
+            <div class="form-group">
+                <label for="messaggio">Messaggio</label>
+                <textarea id="messaggio" name="messaggio" rows="6" required></textarea>
+            </div>
+
+            <div class="form-group privacy-consent">
+                <input type="checkbox" id="privacy_contact" name="privacy_contact" value="accepted" required>
+                <label for="privacy_contact">
+                    Ho letto e accetto l'<a href="/privacy" target="_blank">Informativa sulla Privacy</a> per il trattamento dei miei dati.
+                </label>
+           </div>
+
+            <button type="submit" class="button">Invia Messaggio</button>
+        </form>
+    </div>
+</BaseLayout>
+
+<style>
+  .contact-form {
+    max-width: 700px; /* Slightly wider for more fields */
+    margin: 0 auto;
+    padding: calc(var(--spacing-unit) * 2);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--light-gray);
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr; /* Default to single column */
+    gap: var(--spacing-unit);
+    margin-bottom: var(--spacing-unit);
+  }
+
+  @media (min-width: 600px) {
+    .form-grid {
+      grid-template-columns: 1fr 1fr; /* Two columns on wider screens */
+    }
+  }
+
+  .form-group {
+    margin-bottom: var(--spacing-unit); /* Keep some margin for single column items */
+  }
+
+  .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+  }
+
+  .form-group input[type="text"],
+  .form-group input[type="email"],
+  .form-group input[type="tel"],
+  .form-group textarea {
+    width: 100%;
+    padding: calc(var(--spacing-unit) * 0.75);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 1rem;
+  }
+
+  .form-group textarea {
+    resize: vertical; /* Allow vertical resizing */
+  }
+
+  .privacy-consent { /* Copied from RegistrationForm, ensure consistency */
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-bottom: calc(var(--spacing-unit) * 1.5);
+  }
+  .privacy-consent input[type="checkbox"] {
+    margin-top: 0.2em;
+    flex-shrink: 0;
+  }
+  .privacy-consent label {
+    font-weight: normal;
+    margin-bottom: 0;
+    font-size: 0.9rem;
+  }
+  .privacy-consent label a {
+    text-decoration: underline;
+  }
+
+  button[type="submit"] {
+    width: 100%;
+    padding: calc(var(--spacing-unit) * 0.8) 0;
+    font-size: 1.1rem;
+  }
+</style>

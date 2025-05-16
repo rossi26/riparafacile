@@ -1,0 +1,23 @@
+---
+import type { MarkdownInstance } from 'astro';
+
+interface Props {
+    post: MarkdownInstance<Record<string, any>>; 
+    constructedUrl: string;// Adjust type as needed
+}
+
+const { post,constructedUrl } = Astro.props;
+const { frontmatter, url } = post;
+const pubDate = new Date(frontmatter.pubDate);
+
+---
+<article class="blog-post-card">
+    <div class="blog-post-card-content">
+        <h3>
+            <a href={url}>{frontmatter.title}</a>
+        </h3>
+         {frontmatter.pubDate && <time datetime={pubDate.toISOString()}>{new Date(frontmatter.pubDate).toLocaleDateString('it-IT', { year: 'numeric', month: 'long', day: 'numeric' })}</time>}
+        <p>{frontmatter.description}</p>
+        <a href={constructedUrl} class="button">Leggi di più</a>
+    </div>
+</article>

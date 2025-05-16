@@ -1,0 +1,30 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PricingCard from '../components/PricingCard.astro';
+import pricingPlans from '../content/data/pricing.json';
+---
+<BaseLayout title="Piani di Abbonamento" description="Scopri i nostri piani Base, Standard e Premium per la manutenzione della casa. Prezzi IVA inclusa.">
+    <div class="container">
+        <h1>Scegli il Piano Perfetto per Te</h1>
+        <p>Offriamo tre livelli di abbonamento per adattarsi a diverse esigenze e budget. Tutti i prezzi sono IVA inclusa.</p>
+
+        <div class="pricing-tiers margin-top-large">
+             {pricingPlans.map(plan => (
+                <PricingCard
+                    name={plan.name}
+                    price={plan.price}
+                    period={plan.period}
+                    vatIncluded={plan.vat_included}
+                    features={plan.features}
+                    highlight={plan.highlight}
+                    ctaText="Richiedi Iscrizione"
+                />
+            ))}
+        </div>
+
+         <div class="text-center margin-top-large">
+            <p>Pronto a scegliere? Completa il modulo di registrazione.</p>
+            <a href="/registrazione" class="button">Registrati Ora</a>
+        </div>
+    </div>
+</BaseLayout>

@@ -1,0 +1,28 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import BlogPostCard from '../../components/BlogPostCard.astro';
+import type { MarkdownInstance } from 'astro';
+
+
+// Fetch all Markdown posts from the blog directory
+const allPosts = await Astro.glob('../../content/blogpost/*.md');
+// Sort posts by date, newest first
+allPosts.sort((a, b) => new Date(b.frontmatter.pubDate).valueOf() - new Date(a.frontmatter.pubDate).valueOf());
+---
+<BaseLayout title="Blog - Consigli Utili per la Casa" description="Leggi i nostri articoli sulla manutenzione della casa, risparmio energetico e sicurezza.">
+    <div class="container">
+        <h1>Il Nostro Blog</h1>
+        <p>Consigli, guide e novità sul mondo della manutenzione domestica.</p>
+
+        <div class="blog-grid margin-top-large">
+            {allPosts.map(post => {
+                // Extract slug from filename (e.g., "post-1.md" -> "post-1")
+                const slug = post.file.split('/').pop()?.replace('.md', '');
+                // Construct the correct URL for the blog post
+                const postUrl = slug ? `/blog/${slug}` : '#'; // Fallback to '#' if slug is undefined
+
+                return <BlogPostCard post={post} constructedUrl={postUrl} />;
+            })}
+        </div>
+    </div>
+</BaseLayout>

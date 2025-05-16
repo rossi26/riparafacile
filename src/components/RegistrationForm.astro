@@ -1,0 +1,76 @@
+---
+// Placeholder for potential future logic (e.g., success message handling)
+---
+<form action="#" method="POST" class="registration-form"> <p class="form-intro">
+    Compila il modulo sottostante per richiedere l'iscrizione. Verrai ricontattato via email per la conferma e i dettagli di fatturazione.
+  </p>
+  <div class="form-group">
+    <label for="nome">Nome</label>
+    <input type="text" id="nome" name="nome" required>
+  </div>
+  <div class="form-group">
+    <label for="cognome">Cognome</label>
+    <input type="text" id="cognome" name="cognome" required>
+  </div>
+  <div class="form-group">
+    <label for="email">Email</label>
+    <input type="email" id="email" name="email" required>
+  </div>
+  <div class="form-group">
+    <label for="telefono">Telefono</label>
+    <input type="tel" id="telefono" name="telefono" required>
+  </div>
+   <div class="form-group privacy-consent">
+        <input type="checkbox" id="privacy" name="privacy" value="accepted" required>
+        <label for="privacy">
+            Ho letto e accetto l'<a href="/privacy" target="_blank">Informativa sulla Privacy</a> e i <a href="/termini" target="_blank">Termini del Servizio</a>.
+        </label>
+   </div>
+  <button type="submit">Invia Richiesta</button>
+   <p class="form-note">
+       Nota: L'attivazione del servizio e la fatturazione verranno gestite manualmente via email dopo la verifica della richiesta.
+   </p>
+</form>
+
+<style>
+   .registration-form {
+     max-width: 600px;
+     margin: 0 auto;
+     padding: calc(var(--spacing-unit) * 2);
+     border: 1px solid var(--border-color);
+     border-radius: 8px;
+     background-color: var(--light-gray);
+   }
+   .form-intro, .form-note {
+     margin-bottom: var(--spacing-unit);
+     font-size: 0.95rem;
+     color: var(--secondary-color);
+   }
+    .form-note {
+      margin-top: var(--spacing-unit);
+      font-size: 0.85rem;
+    }
+    .privacy-consent {
+        display: flex;
+        align-items: flex-start; /* Align checkbox with start of label */
+        gap: 0.5rem; /* Space between checkbox and label */
+        margin-bottom: calc(var(--spacing-unit) * 1.5);
+    }
+    .privacy-consent input[type="checkbox"] {
+       margin-top: 0.2em; /* Align checkbox better with text */
+       flex-shrink: 0; /* Prevent checkbox shrinking */
+    }
+    .privacy-consent label {
+       font-weight: normal; /* Make privacy label normal weight */
+       margin-bottom: 0; /* Remove default label margin */
+       font-size: 0.9rem;
+    }
+    .privacy-consent label a {
+        text-decoration: underline;
+    }
+    button[type="submit"] {
+        width: 100%;
+        padding: calc(var(--spacing-unit) * 0.8) 0;
+        font-size: 1.1rem;
+    }
+</style>

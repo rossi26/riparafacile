@@ -1,0 +1,43 @@
+[
+  {
+    "name": "Piano Base",
+    "price": "29,90",
+    "period": "/mese",
+    "vat_included": true,
+    "features": [
+      "Accesso prioritario alle chiamate",
+      "1 intervento Idraulico/anno incluso",
+      "Sconto 10% su interventi extra",
+      "Controllo annuale caldaia"
+    ],
+    "highlight": false
+  },
+  {
+    "name": "Piano Standard",
+    "price": "49,90",
+    "period": "/mese",
+    "vat_included": true,
+    "features": [
+      "Tutto del Piano Base",
+      "1 intervento Elettricista/anno incluso",
+      "1 intervento Spurgo/anno incluso",
+      "Sconto 15% su interventi extra",
+      "Assistenza telefonica dedicata"
+    ],
+    "highlight": true
+  },
+  {
+    "name": "Piano Premium",
+    "price": "79,90",
+    "period": "/mese",
+    "vat_included": true,
+    "features": [
+      "Tutto del Piano Standard",
+      "1 intervento Fabbro o Edilizia/anno incluso",
+      "Interventi illimitati con franchigia ridotta (€30)",
+      "Sconto 20% su interventi extra",
+      "Check-up completo casa annuale"
+    ],
+    "highlight": false
+  }
+]

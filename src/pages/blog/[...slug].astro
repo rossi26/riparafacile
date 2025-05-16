@@ -1,0 +1,68 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import type { MarkdownInstance, GetStaticPathsOptions } from 'astro';
+
+interface Frontmatter {
+    title: string;
+    pubDate: string; // Or Date
+    description: string;
+    // Add other frontmatter properties if they exist
+}
+
+// 1. Generate a static page for every blog post
+export async function getStaticPaths({}: GetStaticPathsOptions = {}) {
+  const allPosts = await Astro.glob<Frontmatter>('../../content/blogpost/*.md');
+  return allPosts.map((post) => {
+    // The slug is derived from the filename (e.g., "post-1.md" -> "post-1")
+     const slug = post.file.split('/').pop()?.replace('.md', '');
+     return {
+       params: { slug: slug }, // Astro expects `slug` for `[...slug].astro`
+       props: { post },
+     };
+  });
+}
+
+// 2. Get the post data from the props
+interface Props {
+    post: MarkdownInstance<Frontmatter>;
+}
+
+const { post } = Astro.props;
+const { Content, frontmatter } = post; // Get the pre-rendered content component
+---
+<BaseLayout title={frontmatter.title} description={frontmatter.description}>
+  <article class="container blog-post-content">
+    <h1>{frontmatter.title}</h1>
+    {frontmatter.pubDate && (
+         <p class="post-meta">
+            Pubblicato il: <time datetime={new Date(frontmatter.pubDate).toISOString()}>
+                {new Date(frontmatter.pubDate).toLocaleDateString('it-IT', { year: 'numeric', month: 'long', day: 'numeric' })}
+            </time>
+         </p>
+    )}
+     <hr class="post-divider">
+
+    <Content />
+
+     <a href="/blog" class="button margin-top-large">&larr; Torna al Blog</a>
+  </article>
+</BaseLayout>
+
+<style>
+   .blog-post-content {
+     max-width: 800px; /* Limit content width for readability */
+   }
+    .post-meta {
+        font-size: 0.9rem;
+        color: var(--secondary-color);
+        margin-bottom: var(--spacing-unit);
+    }
+    .post-divider {
+        border: none;
+        border-top: 1px solid var(--border-color);
+        margin: calc(var(--spacing-unit) * 1.5) 0;
+    }
+    /* Add specific styles for blog content elements if needed */
+    .blog-post-content h2 { margin-top: 2rem; }
+    .blog-post-content ul { margin-left: 1.5rem; }
+</style>

@@ -1,0 +1,28 @@
+---
+// Determine active page for styling - needs refinement based on exact URL paths
+const currentPath = Astro.url.pathname;
+const isHome = currentPath === '/';
+const isServizi = currentPath.startsWith('/servizi');
+const isPiani = currentPath.startsWith('/piani');
+const isBlog = currentPath.startsWith('/blog');
+const isRegistrazione = currentPath.startsWith('/registrazione');
+const isContatti = currentPath.startsWith('/contatti');
+---
+<header class="main-header">
+    <div class="header-container">
+        <div class="site-title">
+            <a href="/">Manutenzione Casa PRO</a> </div>
+        <button id="menu-toggle" class="menu-toggle" aria-label="Apri menu" aria-expanded="false" aria-controls="main-nav">
+            &#9776; </button>
+        <nav id="main-nav" class="main-nav" aria-label="Navigazione principale">
+            <ul>
+                <li><a href="/" class:list={{ active: isHome }}>Home</a></li>
+                <li><a href="/servizi" class:list={{ active: isServizi }}>Servizi</a></li>
+                <li><a href="/piani" class:list={{ active: isPiani }}>Piani</a></li>
+                <li><a href="/blog" class:list={{ active: isBlog }}>Blog</a></li>
+                <li><a href="/contatti" class:list={{ active: isContatti}}>Contatti</a></li> {/* New Link */}
+                <li><a href="/registrazione" class:list={{ active: isRegistrazione }}>Registrati</a></li>
+            </ul>
+        </nav>
+    </div>
+</header>

@@ -1,16 +1,54 @@
 ---
-
+import BaseLayout from '../layouts/BaseLayout.astro';
+import TestimonialCard from '../components/TestimonialCard.astro';
+import testimonials from '../content/data/testimonials.json';
+import PricingCard from '../components/PricingCard.astro';
+import pricingPlans from '../content/data/pricing.json';
 ---
+<BaseLayout title="Manutenzione Casa in Abbonamento - Servizio Nazionale">
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+    <section class="hero-section">
+        <div class="container">
+            <h1>La Tua Casa, Sempre in Perfetta Forma</h1>
+            <p>Servizi di manutenzione idraulica, elettrica, riscaldamento e altro, con piani di abbonamento flessibili in tutta Italia.</p>
+            <a href="/piani" class="button">Scopri i Piani</a>
+        </div>
+    </section>
+
+    <section class="container margin-top-large">
+        <h2 class="text-center">I Nostri Servizi Principali</h2>
+        <p class="text-center">Copriamo tutte le esigenze di manutenzione ordinaria e straordinaria.</p>
+        <div class="text-center" style="margin-top: 1rem;">
+             <a href="/servizi" class="button">Vedi Tutti i Servizi</a>
+         </div>
+    </section>
+
+     <section class="container margin-top-large">
+        <h2 class="text-center">Piani Tariffari Flessibili</h2>
+         <p class="text-center margin-bottom-large">Scegli l'abbonamento più adatto alle tue esigenze. Prezzi IVA inclusa.</p>
+        <div class="pricing-tiers">
+            {pricingPlans.map(plan => (
+                <PricingCard
+                    name={plan.name}
+                    price={plan.price}
+                    period={plan.period}
+                    vatIncluded={plan.vat_included}
+                    features={plan.features}
+                    highlight={plan.highlight}
+                />
+            ))}
+        </div>
+    </section>
+
+    <section class="testimonials-section margin-top-large">
+        <div class="container">
+            <h2>Cosa Dicono i Nostri Clienti</h2>
+            <div class="testimonials-container">
+                {testimonials.map(testimonial => (
+                    <TestimonialCard text={testimonial.text} author={testimonial.author} />
+                ))}
+            </div>
+        </div>
+    </section>
+
+</BaseLayout>

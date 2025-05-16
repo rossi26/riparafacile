@@ -1,0 +1,8 @@
+[
+  { "name": "Idraulico", "description": "Riparazioni perdite, installazioni sanitari, disotturazioni.", "icon": "💧" },
+  { "name": "Riscaldamento", "description": "Manutenzione caldaie, controllo fumi, riparazione termosifoni.", "icon": "🔥" },
+  { "name": "Elettricista", "description": "Riparazione guasti, impianti elettrici, certificazioni.", "icon": "⚡" },
+  { "name": "Spurgo", "description": "Disostruzione scarichi, pulizia fosse biologiche, videoispezioni.", "icon": "🚽" },
+  { "name": "Edilizia", "description": "Piccole ristrutturazioni, muratura, piastrellatura.", "icon": "🧱" },
+  { "name": "Fabbro", "description": "Apertura porte, sostituzione serrature, riparazioni.", "icon": "🔑" }
+]

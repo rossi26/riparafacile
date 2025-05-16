@@ -1,0 +1,86 @@
+---
+interface Props {
+  name: string;
+  price: string;
+  period: string;
+  vatIncluded: boolean;
+  features: string[];
+  highlight: boolean;
+  ctaText?: string;
+  ctaLink?: string;
+}
+const {
+    name,
+    price,
+    period,
+    vatIncluded,
+    features,
+    highlight,
+    ctaText = "Scegli Piano",
+    ctaLink = "/registrazione"
+ } = Astro.props;
+---
+<div class:list={["pricing-card", { highlight }]}>
+    <h3>{name}</h3>
+    <p class="price">€{price}<span class="period">{period}</span></p>
+    {vatIncluded && <p class="vat-note">IVA inclusa</p>}
+    <ul>
+        {features.map(feature => <li>{feature}</li>)}
+    </ul>
+    <a href={ctaLink} class="button cta-button">{ctaText}</a>
+</div>
+
+<style>
+  .pricing-card {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: calc(var(--spacing-unit) * 1.5);
+    background-color: var(--background-color);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    display: flex;
+    flex-direction: column;
+  }
+  .pricing-card.highlight {
+    border-color: var(--primary-color);
+    border-width: 2px;
+    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.2); /* Highlight shadow */
+  }
+  .pricing-card h3 {
+    text-align: center;
+    margin-bottom: var(--spacing-unit);
+    font-size: 1.4rem;
+    color: var(--primary-color);
+  }
+  .price {
+    font-size: 2.5rem;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 0.25rem;
+    color: var(--text-color);
+  }
+  .period {
+    font-size: 1rem;
+    font-weight: normal;
+    color: var(--secondary-color);
+    margin-left: 0.25rem;
+  }
+   .vat-note {
+     font-size: 0.8rem;
+     text-align: center;
+     color: var(--secondary-color);
+     margin-bottom: var(--spacing-unit);
+   }
+  .pricing-card ul {
+    list-style: '✓ '; /* Basic checkmark */
+    padding-left: var(--spacing-unit);
+    margin-bottom: calc(var(--spacing-unit) * 1.5);
+    flex-grow: 1; /* Push button to bottom */
+  }
+   .pricing-card li {
+     margin-bottom: 0.5rem;
+   }
+  .cta-button {
+    margin-top: auto; /* Pushes button to bottom */
+    width: 100%;
+  }
+</style>
