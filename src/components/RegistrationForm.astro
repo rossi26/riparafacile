@@ -20,6 +20,40 @@
     <label for="telefono">Telefono</label>
     <input type="tel" id="telefono" name="telefono" required>
   </div>
+  <div class="form-group">
+    
+    <div class="radio-group">
+        <input type="radio" id="piano" name="plan" class="radio-input">
+        <label for="piano" class="radio-label">
+            <span class="title">Piano Base</span>
+            <span class="description">Perfect for beginners</span>
+            <div class="checkmark">
+                <svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg>
+            </div>
+        </label>
+
+        <input type="radio" id="standard" name="plan" class="radio-input">
+        <label for="standard" class="radio-label">
+            <span class="title">Standard</span>
+            <span class="description">Most popular choice</span>
+            <div class="checkmark">
+                <svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg>
+            </div>
+        </label>
+
+        <input type="radio" id="premium" name="plan" class="radio-input">
+        <label for="premium" class="radio-label">
+            <span class="title">Premium</span>
+            <span class="description">Advanced features included</span>
+            <div class="checkmark">
+                <svg viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg>
+            </div>
+        </label>
+    </div>
+
+
+   
+  </div>
    <div class="form-group privacy-consent">
         <input type="checkbox" id="privacy" name="privacy" value="accepted" required>
         <label for="privacy">
@@ -33,6 +67,8 @@
 </form>
 
 <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter  :wght@400;600&display=swap');
+
    .registration-form {
      max-width: 600px;
      margin: 0 auto;
@@ -73,4 +109,108 @@
         padding: calc(var(--spacing-unit) * 0.8) 0;
         font-size: 1.1rem;
     }
+
+    .radio-group {
+            display: flex;
+            gap: 1.5rem;
+            padding: 2rem;
+            border-radius: 1.5rem;
+            background: white;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .radio-input {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .radio-label {
+            flex: 1;
+            padding: 2rem 1rem;
+            border-radius: 1rem;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s cubic-bezier(0.64, 0.09, 0.08, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .radio-label::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #4a90e2, #6a11cb);
+            border-radius: inherit;
+            transform: scale(0);
+            transition: transform 0.3s ease;
+            z-index: 0;
+        }
+
+        .radio-label:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(74, 144, 226, 0.2);
+        }
+
+        .radio-input:checked + .radio-label {
+            color: white;
+        }
+
+        .radio-input:checked + .radio-label::before {
+            transform: scale(1);
+        }
+
+        .radio-input:checked + .radio-label .checkmark {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .radio-label .title {
+            font-weight: 600;
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .radio-label .description {
+            font-size: 0.875rem;
+            color: #666;
+            position: relative;
+            z-index: 1;
+        }
+
+        .checkmark {
+            position: absolute;
+            right: 1rem;
+            top: 1rem;
+            width: 24px;
+            height: 24px;
+            opacity: 0;
+            transform: scale(0.7);
+            transition: all 0.3s ease;
+        }
+
+        .checkmark svg {
+            width: 100%;
+            height: 100%;
+            fill: white;
+        }
+
+        /* Bounce animation */
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .radio-input:checked + .radio-label {
+            animation: bounce 0.3s ease;
+        }
+
+
 </style>
