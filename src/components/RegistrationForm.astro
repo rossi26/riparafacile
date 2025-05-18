@@ -1,7 +1,17 @@
 ---
 // Placeholder for potential future logic (e.g., success message handling)
 ---
-<form action="#" method="POST" class="registration-form"> <p class="form-intro">
+<form action="#" method="POST" class="registration-form" netlify {/* This name is important for Netlify UI */}
+                    data-netlify="true"
+                    netlify-honeypot="bot-field" > 
+                    <input type="hidden" name="form-name" value="contact" />
+
+                    {/* Honeypot field for spam prevention. Should be hidden for users. */}
+                     <p class="hidden" style="display: none;">
+                         <label>Don’t fill this out if you’re human: <input name="bot-field"></label>
+                     </p>
+
+                    <p class="form-intro">
     Compila il modulo sottostante per richiedere l'iscrizione. Verrai ricontattato via email per la conferma e i dettagli di fatturazione.
   </p>
   <div class="form-group">
