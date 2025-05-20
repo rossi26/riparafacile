@@ -4,8 +4,35 @@ import TestimonialCard from '../components/TestimonialCard.astro';
 import testimonials from '../content/data/testimonials.json';
 import PricingCard from '../components/PricingCard.astro';
 import pricingPlans from '../content/data/pricing.json';
+import Auth from '../components/Auth.astro';
+import UserProfile from '../components/UserProfile.astro';
 ---
 <BaseLayout title="Manutenzione Casa in Abbonamento - Servizio Nazionale">
+
+
+
+    <div class="max-w-lg mx-auto bg-gray-50 p-6 rounded-xl shadow-lg">
+      <Auth />
+      <UserProfile />
+    </div>
+    
+    <section class="mt-12 max-w-2xl mx-auto p-6 bg-blue-50 border border-blue-200 rounded-lg text-blue-800">
+      <h2 class="font-semibold text-xl mb-3">How This System Works:</h2>
+      <ul class="list-disc list-inside space-y-2 text-sm">
+        <li>The "User Authentication" section uses Netlify Identity for sign-up, login, and logout.</li>
+        <li>You can use the "Proceed to Sign Up" button after entering a username, then complete email/password in the Netlify popup.</li>
+        <li>Upon successful login or initial signup & login (after email confirmation if enabled):
+          <ul class="list-disc list-inside ml-6 mt-1">
+            <li>Your chosen username (or one derived from your email/Netlify profile) is sent to a Netlify Function.</li>
+            <li>This function (`set-user-data`) securely saves/updates your profile (Netlify ID, email, username) in a Supabase database.</li>
+          </ul>
+        </li>
+        <li>The "Your Supabase Profile" section (visible when logged in) fetches and displays this data from Supabase via another Netlify Function (`get-user-data`).</li>
+        <li>Session management (JWTs) is handled by Netlify Identity and stored in `localStorage`.</li>
+      </ul>
+    </section>
+
+
 
     <section class="hero-section">
         <div class="container">

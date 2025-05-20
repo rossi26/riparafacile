@@ -1,0 +1,28 @@
+# netlify.toml
+
+[build]
+  command = "npm run build" # Or your specific Astro build command (e.g., "astro build")
+  publish = "dist"          # Astro's default output directory
+  functions = "netlify/functions" # Directory where Netlify Functions are stored
+
+# Optional: Redirect rule for cleaner function URLs (not strictly necessary if calling /.netlify/functions/ directly)
+# [[redirects]]
+#   from = "/api/*"
+#   to = "/.netlify/functions/:splat"
+#   status = 200 # Proxy rule
+
+# If you have client-side routing and want all paths to be handled by index.html (common for SPAs, less so for Astro default)
+# [[redirects]]
+#   from = "/*"
+#   to = "/index.html"
+#   status = 200
+
+# Ensure your Astro build command and publish directory match your project setup.
+# The Astro Netlify adapter often handles much of the necessary configuration for functions.
+```
+**Explanation of `netlify.toml`:**
+* **`[build]`**:
+    * `command`: Your site's build command (e.g., `astro build`, `npm run build`).
+    * `publish`: The directory where your built Astro site is output (usually `dist`).
+    * `functions`: Specifies the directory (`netlify/functions`) where your serverless functions are located.
+* The Astro adapter for Netlify (`@astrojs/netlify`) usually handles function deployment correctly without needing explicit redirect rules for the `/.netlify/functions/` pa
