@@ -1,9 +1,9 @@
 // netlify/functions/get-user-data.js
-// import { createClient } from '@supabase/supabase-js'; // Already imported if in same file, but good for clarity if separate
+import { createClient } from '@supabase/supabase-js'; // Already imported if in same file, but good for clarity if separate
 
-// const SUPABASE_URL = process.env.SUPABASE_URL; // Already defined
-// const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY; // Already defined
-// const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, { ... }); // Client already initialized
+const SUPABASE_URL = process.env.SUPABASE_URL; // Already defined
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY; // Already defined
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, { ... }); // Client already initialized
 
 export const handler = async (event, context) => {
   // Ensure Supabase URL and Service Key are available at runtime
