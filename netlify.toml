@@ -19,10 +19,3 @@
 
 # Ensure your Astro build command and publish directory match your project setup.
 # The Astro Netlify adapter often handles much of the necessary configuration for functions.
-```
-**Explanation of `netlify.toml`:**
-* **`[build]`**:
-    * `command`: Your site's build command (e.g., `astro build`, `npm run build`).
-    * `publish`: The directory where your built Astro site is output (usually `dist`).
-    * `functions`: Specifies the directory (`netlify/functions`) where your serverless functions are located.
-* The Astro adapter for Netlify (`@astrojs/netlify`) usually handles function deployment correctly without needing explicit redirect rules for the `/.netlify/functions/` pa
