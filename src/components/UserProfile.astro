@@ -11,6 +11,9 @@
     <p class="text-gray-800"><strong>Netlify User ID:</strong> <span id="profile-netlify-id" class="font-normal text-gray-600 text-xs"></span></p>
     <p class="text-gray-800"><strong>Profile Created:</strong> <span id="profile-created-at" class="font-normal text-gray-600 text-xs"></span></p>
     <p class="text-gray-800"><strong>Last Updated:</strong> <span id="profile-updated-at" class="font-normal text-gray-600 text-xs"></span></p>
+    <p class="text-gray-800"><strong>Phone:</strong> <span id="profile-phone" class="font-normal text-gray-600"></span></p>
+  <p class="text-gray-800"><strong>Plan:</strong> <span id="profile-plan" class="font-normal text-gray-600"></span></p>
+    
   </div>
   <div id="profile-error" class="text-red-500 hidden"></div>
 </div>
@@ -28,7 +31,10 @@
     document.getElementById('profile-netlify-id').textContent = data.netlify_id || 'N/A';
     document.getElementById('profile-created-at').textContent = data.created_at ? new Date(data.created_at).toLocaleString() : 'N/A';
     document.getElementById('profile-updated-at').textContent = data.updated_at ? new Date(data.updated_at).toLocaleString() : 'N/A';
-    
+    document.getElementById('profile-phone').textContent = data.phone || 'N/A';
+document.getElementById('profile-plan').textContent = data.subscription_plan || 'N/A';
+
+
     if (profileLoadingEl) profileLoadingEl.classList.add('hidden');
     profileDataEl.classList.remove('hidden');
     if (profileErrorEl) profileErrorEl.classList.add('hidden');
@@ -131,4 +137,6 @@
     // Auth.astro dispatches 'netlifyIdentityReady' once widget is loaded and global.
     window.addEventListener('netlifyIdentityReady', initialProfileLoad, { once: true });
   }
+
+
 </script>

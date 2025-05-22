@@ -1,132 +1,136 @@
 // netlify/functions/set-user-data.js
 import { createClient } from '@supabase/supabase-js';
 
-export const handler = async (event, context) => {
-  // Log environment variables to ensure they are present at runtime
-  console.log('set-user-data: SUPABASE_URL:', process.env.SUPABASE_URL ? 'Set' : 'Not Set');
-  console.log('set-user-data: SUPABASE_SERVICE_KEY:', process.env.SUPABASE_SERVICE_KEY ? 'Set' : 'Not Set');
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
-  // Ensure Supabase URL and Service Key are available at runtime
-  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
-    console.error('set-user-data: Supabase environment variables not available at runtime.');
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'Server configuration error: Supabase credentials missing.' }),
-    };
-  }
-
-  // Initialize Supabase client inside the handler for consistency and runtime variable access
-  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
+let supabase;
+if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
+  supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
       detectSessionInUrl: false
     }
   });
+}
 
-  // Ensure the request is a POST request
+export const handler = async (event, context) => {
+  if (!supabase) {
+    console.error('Supabase client not initialized in set-user-data.');
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: 'Server configuration error: Supabase client not initialized.' }),
+    };
+  }
+
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: JSON.stringify({ error: 'Method Not Allowed' }) };
   }
 
-  // Get the authenticated user from Netlify Identity (passed in context)
   const { user } = context.clientContext;
   if (!user) {
-    console.warn('set-user-data: Unauthorized access attempt - no user context.');
     return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized: No user context.' }) };
   }
 
-  // Parse the request body to get additional data (e.g., username)
   let requestBody;
   try {
     requestBody = JSON.parse(event.body);
-    console.log('set-user-data: Request body parsed:', requestBody);
   } catch (e) {
-    console.error('set-user-data: Bad request: Invalid JSON.', e);
     return { statusCode: 400, body: JSON.stringify({ error: 'Bad request: Invalid JSON.' }) };
   }
-
-  const { username } = requestBody;
+   
+  const { username, phone, subscription_plan } = requestBody; // Destructure new fields
 
   if (!username || typeof username !== 'string' || username.trim() === '') {
-    console.error('set-user-data: Validation error: Username is required.');
-    return { statusCode: 400, body: JSON.stringify({ error: 'Username is required and must be a non-empty string.' }) };
+      return { statusCode: 400, body: JSON.stringify({ error: 'Username is required and must be a non-empty string.' }) };
   }
+  // Add validation for subscription_plan if it's mandatory
+  if (!subscription_plan || typeof subscription_plan !== 'string' || subscription_plan.trim() === '') {
+    return { statusCode: 400, body: JSON.stringify({ error: 'Subscription plan is required.' }) };
+  }
+  // Phone can be optional, so we might not validate its presence as strictly,
+  // but we should ensure it's a string if provided.
+  if (phone && typeof phone !== 'string') {
+    return { statusCode: 400, body: JSON.stringify({ error: 'Phone, if provided, must be a string.' }) };
+  }
+
 
   const netlify_id = user.sub;
   const email = user.email;
-  console.log(`set-user-data: Processing profile for Netlify ID: ${netlify_id}, Email: ${email}, Username: ${username}`);
 
   try {
-    // Check if a user profile with this netlify_id already exists
     const { data: existingProfile, error: selectError } = await supabase
       .from('user_profiles')
       .select('netlify_id')
       .eq('netlify_id', netlify_id)
       .maybeSingle();
 
-    // Handle potential errors during the select query, excluding "0 rows" which is fine.
-    if (selectError && selectError.code !== 'PGRST116') { // PGRST116: "The result contains 0 rows"
-      console.error('set-user-data: Supabase select error during existence check:', selectError);
+    if (selectError && selectError.code !== 'PGRST116') { 
+      console.error('Supabase select error in set-user-data:', selectError);
       throw selectError;
     }
 
     let userProfileData;
     const currentTime = new Date().toISOString();
+    const trimmedUsername = username.trim();
+    const trimmedPhone = phone ? phone.trim() : null; // Trim phone if it exists, otherwise null
+    const trimmedPlan = subscription_plan.trim();
+
+
+    const profilePayload = {
+        email: email,
+        username: trimmedUsername,
+        phone: trimmedPhone, // Add phone to payload
+        subscription_plan: trimmedPlan, // Add plan to payload
+        updated_at: currentTime,
+    };
 
     if (existingProfile) {
-      console.log(`set-user-data: Existing profile found for ${netlify_id}, attempting update.`);
-      // User profile exists, update it
       const { data: updatedData, error: updateError } = await supabase
         .from('user_profiles')
-        .update({
-          email: email,
-          username: username.trim(),
-          updated_at: currentTime,
-        })
+        .update(profilePayload) // Use the combined payload
         .eq('netlify_id', netlify_id)
-        .select('username, email, netlify_id, created_at, updated_at') // Select all fields needed for client-side update
+        .select('username, email, netlify_id, created_at, updated_at, phone, subscription_plan') // Select new fields
         .single();
 
       if (updateError) {
-        console.error('set-user-data: Supabase update error:', updateError);
+        console.error('Supabase update error in set-user-data:', updateError);
         throw updateError;
       }
       userProfileData = updatedData;
-      console.log(`set-user-data: User profile for ${netlify_id} updated in Supabase.`, userProfileData);
+      console.log(`User profile for ${netlify_id} updated in Supabase.`);
     } else {
-      console.log(`set-user-data: No existing profile for ${netlify_id}, attempting insert.`);
-      // User profile does not exist, create a new one
+      // For new profiles, also set created_at
+      const insertPayload = {
+        ...profilePayload,
+        netlify_id: netlify_id,
+        created_at: currentTime,
+      };
       const { data: insertedData, error: insertError } = await supabase
         .from('user_profiles')
-        .insert({
-          netlify_id: netlify_id,
-          email: email,
-          username: username.trim(),
-          created_at: currentTime,
-          updated_at: currentTime,
-        })
-        .select('username, email, netlify_id, created_at, updated_at') // Select all fields needed for client-side update
+        .insert(insertPayload) // Use the combined payload including netlify_id and created_at
+        .select('username, email, netlify_id, created_at, updated_at, phone, subscription_plan') // Select new fields
         .single();
 
       if (insertError) {
-        console.error('set-user-data: Supabase insert error:', insertError);
+        console.error('Supabase insert error in set-user-data:', insertError);
         throw insertError;
       }
       userProfileData = insertedData;
-      console.log(`set-user-data: User profile for ${netlify_id} created in Supabase.`, userProfileData);
+      console.log(`User profile for ${netlify_id} created in Supabase.`);
     }
 
     return {
       statusCode: 200,
       body: JSON.stringify({
-        message: 'User data processed successfully.',
+        message: existingProfile ? 'User data updated successfully.' : 'User data created successfully.',
         profile: userProfileData,
       }),
     };
 
   } catch (error) {
-    console.error('set-user-data: Error processing user data with Supabase:', error);
+    console.error('Error processing user data with Supabase in set-user-data:', error);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: 'Failed to process user data.', details: error.message || 'Unknown error' }),
