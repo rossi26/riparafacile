@@ -44,7 +44,7 @@ export const handler = async (event, context) => {
     // Query Supabase for the user data using the netlify_id
     const { data: userProfile, error: selectError } = await supabase
       .from('user_profiles')
-      .select('netlify_id, email, username, created_at, updated_at')
+      .select('netlify_id, email, username, phone, subscription_plan, created_at, updated_at')
       .eq('netlify_id', netlify_id)
       .single();
 
