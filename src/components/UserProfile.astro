@@ -21,7 +21,7 @@
   const profileLoadingEl = document.getElementById('profile-loading');
   const profileDataEl = document.getElementById('profile-data');
   const profileErrorEl = document.getElementById('profile-error');
-  let isFetchingSupabaseProfile = false; // Flag per prevenire chiamate multiple
+  let isFetchingSupabaseProfile = false;
 
   function displaySupabaseProfileData(data) {
     if (!profileDataEl || !userProfileContainerEl) return;
@@ -30,7 +30,7 @@
     document.getElementById('profile-email').textContent = data.email || 'N/A';
     document.getElementById('profile-username').textContent = data.username || 'N/A';
     document.getElementById('profile-netlify-id').textContent = data.netlify_id || 'N/A';
-    document.getElementById('profile-phone').textContent = data.phone || 'N/A'; // phone può essere null
+    document.getElementById('profile-phone').textContent = data.phone || 'N/A';
     document.getElementById('profile-plan').textContent = data.subscription_plan || 'N/A';
     document.getElementById('profile-created-at').textContent = data.created_at ? new Date(data.created_at).toLocaleString() : 'N/A';
     document.getElementById('profile-updated-at').textContent = data.updated_at ? new Date(data.updated_at).toLocaleString() : 'N/A';
@@ -38,17 +38,17 @@
     if (profileLoadingEl) profileLoadingEl.classList.add('hidden');
     profileDataEl.classList.remove('hidden');
     if (profileErrorEl) profileErrorEl.classList.add('hidden');
-    userProfileContainerEl.classList.remove('hidden');
+    userProfileContainerEl.classList.remove('hidden'); // Assicura che il contenitore sia visibile quando ci sono dati
   }
 
   function displaySupabaseProfileError(message) {
     if (profileErrorEl && userProfileContainerEl) {
       profileErrorEl.textContent = message;
       profileErrorEl.classList.remove('hidden');
-      userProfileContainerEl.classList.remove('hidden'); // Mostra il contenitore per visualizzare l'errore
+      userProfileContainerEl.classList.remove('hidden'); 
     }
-    if (profileLoadingEl) profileLoadingEl.classList.add('hidden'); // Nascondi il caricamento
-    if (profileDataEl) profileDataEl.classList.add('hidden'); // Nascondi i dati del profilo
+    if (profileLoadingEl) profileLoadingEl.classList.add('hidden'); 
+    if (profileDataEl) profileDataEl.classList.add('hidden'); 
   }
 
   async function fetchUserSupabaseProfile() {
@@ -61,30 +61,37 @@
 
     if (!window.netlifyIdentity) {
         console.warn("UserProfile: Netlify Identity not available on window. Cannot fetch profile yet.");
-        // Non mostrare errore, aspetta che netlifyIdentityReady venga emesso
         isFetchingSupabaseProfile = false;
+        // Non mostrare errore, aspetta che netlifyIdentityReady venga emesso
+        // Ma assicurati che il profilo sia nascosto se non c'è utente
+        if (!window.netlifyIdentity?.currentUser()) {
+            handleUserLoggedOut(); // Chiama la funzione di reset UI per logout
+        }
         return;
     }
     
     const netlifyUser = window.netlifyIdentity.currentUser();
 
     if (!netlifyUser) {
-      console.warn("UserProfile: No Netlify user currently logged in. Hiding profile section.");
-      if (userProfileContainerEl) userProfileContainerEl.classList.add('hidden');
-      // Non è un errore da mostrare se l'utente è semplicemente sloggato
+      console.warn("UserProfile: No Netlify user currently logged in. Calling UI reset.");
+      handleUserLoggedOut(); // Chiama la funzione di reset UI per logout
       isFetchingSupabaseProfile = false;
       return;
     }
 
     if (!netlifyUser.token || !netlifyUser.token.access_token) {
       console.warn("UserProfile: User exists but token is missing or not ready.");
-      displaySupabaseProfileError('Authentication token is not ready. Please wait or log in again.');
-      // Lascia il loading visibile, il token potrebbe arrivare
+      // Non mostrare un errore aggressivo qui, potrebbe risolversi.
+      // Invece, assicurati che il loading sia visibile e attendi.
+      if (userProfileContainerEl) userProfileContainerEl.classList.remove('hidden');
+      if (profileLoadingEl) profileLoadingEl.classList.remove('hidden');
+      if (profileDataEl) profileDataEl.classList.add('hidden');
+      if (profileErrorEl) profileErrorEl.classList.add('hidden');
+      // displaySupabaseProfileError('Authentication token is not ready. Please wait or log in again.');
       isFetchingSupabaseProfile = false;
       return;
     }
      
-    // Mostra UI di caricamento
     if (userProfileContainerEl) userProfileContainerEl.classList.remove('hidden');
     if (profileLoadingEl) profileLoadingEl.classList.remove('hidden');
     if (profileDataEl) profileDataEl.classList.add('hidden');
@@ -107,7 +114,6 @@
       }
 
       if (!response.ok) {
-        // L'errore "Unauthorized: You must be logged in..." viene da qui se la funzione Netlify restituisce 401
         console.error(`UserProfile: Error from get-user-data. Status: ${response.status}`, responseData);
         throw new Error(responseData.error || responseData.details || `Error ${response.status}: ${response.statusText}`);
       }
@@ -122,24 +128,45 @@
     }
   }
 
+  // Chiamata quando l'utente si logga
   function handleUserLoggedIn(event) {
     console.log('UserProfile: userLoggedIn event detected.', event.detail);
-    // Non è necessario controllare netlifyIdentity.currentUser() qui, perché l'evento stesso fornisce l'utente.
-    // La chiamata a fetchUserSupabaseProfile controllerà il token.
+    // Mostra il contenitore e il loading in preparazione al fetch
+    if (userProfileContainerEl) userProfileContainerEl.classList.remove('hidden');
+    if (profileLoadingEl) profileLoadingEl.classList.remove('hidden');
+    if (profileDataEl) profileDataEl.classList.add('hidden');
+    if (profileErrorEl) profileErrorEl.classList.add('hidden');
     fetchUserSupabaseProfile();
   }
 
+  // Chiamata quando l'utente si slogga
   function handleUserLoggedOut() {
-    console.log('UserProfile: userLoggedOut event detected. Hiding profile.');
+    console.log('UserProfile: userLoggedOut event detected. Resetting UI.');
+    
+    // Nascondi l'intero contenitore del profilo
     if (userProfileContainerEl) userProfileContainerEl.classList.add('hidden');
+
+    // Pulisci i campi specifici dei dati del profilo
+    const fieldsToClear = ['profile-email', 'profile-username', 'profile-netlify-id', 'profile-phone', 'profile-plan', 'profile-created-at', 'profile-updated-at'];
+    fieldsToClear.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = ''; 
+    });
+
+    // Assicura che la sezione dei dati sia nascosta
     if (profileDataEl) profileDataEl.classList.add('hidden');
+    
+    // Nascondi e pulisci eventuali messaggi di errore
     if (profileErrorEl) {
         profileErrorEl.classList.add('hidden');
-        profileErrorEl.textContent = ''; // Pulisci errori precedenti
+        profileErrorEl.textContent = ''; 
     }
-    if (profileLoadingEl) { // Resetta il messaggio di caricamento
-        profileLoadingEl.classList.remove('hidden'); 
+    
+    // Ripristina il messaggio di caricamento per la prossima volta, ma mantieni il contenitore nascosto
+    if (profileLoadingEl) { 
         profileLoadingEl.textContent = 'Loading profile...';
+        // Non rimuovere 'hidden' da profileLoadingEl qui, perché l'intero userProfileContainerEl è nascosto.
+        // Verrà mostrato di nuovo da fetchUserSupabaseProfile o handleUserLoggedIn quando necessario.
     }
   }
   
@@ -155,36 +182,42 @@
         displaySupabaseProfileData(event.detail);
     } else if (event.detail && event.detail.error) {
         console.error("UserProfile: userProfileUpdated event indicated an error:", event.detail.error);
-        // Potresti voler mostrare un errore qui o lasciare che fetchUserSupabaseProfile lo gestisca
+        displaySupabaseProfileError(`Profile update failed: ${event.detail.error}`);
     }
   });
    
   function initialProfileLoadSetup() {
     console.log("UserProfile: Setting up initial profile load logic.");
-    if (window.netlifyIdentity && window.netlifyIdentity.currentUser()) {
-        console.log("UserProfile (initialSetup): User already logged in via Netlify Identity, fetching profile.");
-        fetchUserSupabaseProfile();
-    } else if (window.netlifyIdentity) {
-        console.log("UserProfile (initialSetup): Netlify Identity loaded, but no current user.");
-        handleUserLoggedOut(); // Assicura che il profilo sia nascosto
+    const netlifyIdentity = window.netlifyIdentity;
+
+    if (netlifyIdentity) {
+        const currentUser = netlifyIdentity.currentUser();
+        if (currentUser) {
+            console.log("UserProfile (initialSetup): User already logged in via Netlify Identity. Preparing to fetch profile.");
+            // Simula l'evento di login per mostrare il loading e avviare il fetch
+            handleUserLoggedIn({ detail: currentUser });
+        } else {
+            console.log("UserProfile (initialSetup): Netlify Identity loaded, but no current user.");
+            handleUserLoggedOut(); // Assicura che il profilo sia nascosto
+        }
     } else {
         console.log("UserProfile (initialSetup): Netlify Identity not yet loaded, waiting for 'netlifyIdentityReady'.");
         window.addEventListener('netlifyIdentityReady', () => {
             console.log("UserProfile: netlifyIdentityReady event received.");
-            if(window.netlifyIdentity && window.netlifyIdentity.currentUser()){
-                fetchUserSupabaseProfile();
+            const readyUser = window.netlifyIdentity?.currentUser();
+            if(readyUser){
+                handleUserLoggedIn({ detail: readyUser });
             } else {
-                handleUserLoggedOut(); // Assicura che il profilo sia nascosto
+                handleUserLoggedOut(); 
             }
         }, { once: true });
     }
   }
   
-  // Esegui initialProfileLoadSetup quando il DOM è pronto o la pagina è completamente caricata
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initialProfileLoadSetup, {once: true});
   } else {
-    initialProfileLoadSetup(); // DOM già pronto o pagina caricata
+    initialProfileLoadSetup(); 
   }
 
 </script>
