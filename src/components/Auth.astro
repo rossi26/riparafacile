@@ -6,7 +6,7 @@
   <div id="auth-status" class="mb-4 text-gray-600">Loading authentication status...</div>
 
   <div data-netlify-identity-button class="netlify-identity-button-container space-y-2">
-  </div>
+    </div>
 
   <div id="custom-signup-fields" class="hidden mt-4 space-y-3">
     <h3 class="text-lg font-medium text-gray-700">Create Account with Details</h3>
@@ -15,7 +15,7 @@
       <input type="text" id="signup-username" placeholder="Choose a username" class="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500" />
     </div>
     <div>
-      <label for="signup-phone" class="block text-sm font-medium text-gray-700 mb-1">Phone Number (Optional)</label>
+      <label for="signup-phone" class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
       <input type="tel" id="signup-phone" placeholder="Your phone number" class="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500" />
     </div>
     <div>
@@ -42,7 +42,7 @@
       if (window.netlifyIdentity) {
         initializeNetlifyIdentity();
       } else {
-        console.warn("Auth.astro: Netlify Identity script tag found, but widget not initialized. Waiting for it.");
+        console.warn("Netlify Identity script tag found, but widget not initialized. Waiting for it.");
         const scriptTag = document.getElementById('netlify-identity-widget-script');
         if(scriptTag && !scriptTag.dataset.onloadAttached) { 
             scriptTag.addEventListener('load', initializeNetlifyIdentity);
@@ -63,11 +63,11 @@
     netlifyIdentityScript.async = true;
     document.head.appendChild(netlifyIdentityScript);
     netlifyIdentityScript.onload = () => {
-      console.log("Auth.astro: Netlify Identity Widget script loaded.");
+      console.log("Netlify Identity Widget script loaded.");
       initializeNetlifyIdentity();
     };
     netlifyIdentityScript.onerror = () => {
-        console.error("Auth.astro: Failed to load Netlify Identity Widget script.");
+        console.error("Failed to load Netlify Identity Widget script.");
         showAuthMessage("Authentication service script failed to load.", "error");
     };
   }
@@ -95,55 +95,42 @@
     }
   }
 
-  function getCustomSignupDataForBackend(netlifyUser) {
-    if (!netlifyUser) return { username: null, phone: null, subscription_plan: null };
+  function getCustomSignupDataForSync(netlifyUser) {
+    if (!netlifyUser) return { username: null, phone: null, plan: null };
     const emailPart = netlifyUser.email ? netlifyUser.email.split('@')[0] : 'user';
     
-    const signupUsername = localStorage.getItem('signupUsername');
-    const signupPhone = localStorage.getItem('signupPhone');
-    const signupPlan = localStorage.getItem('signupPlan');
-
+    // Prioritize data from localStorage if available (set during custom signup step)
+    // Then fallback to Netlify's metadata, then to email part for username.
     return {
-        username: signupUsername || netlifyUser.user_metadata?.full_name || emailPart,
-        phone: signupPhone, 
-        subscription_plan: signupPlan 
+        username: localStorage.getItem('signupUsername') || netlifyUser.user_metadata?.full_name || emailPart,
+        phone: localStorage.getItem('signupPhone') || netlifyUser.user_metadata?.phone || null, // Assuming phone might be in metadata
+        subscription_plan: localStorage.getItem('signupPlan') || netlifyUser.user_metadata?.subscription_plan || null // Assuming plan might be in metadata
     };
   }
 
-  async function syncUserDataWithBackend(userForSync, userDataToSync) {
-    // Questo userForSync è l'oggetto utente che dovrebbe avere il token aggiornato.
-    console.log('Auth.astro (syncUserDataWithBackend): Entered. User object for sync:', JSON.stringify(userForSync, null, 2));
-    console.log('Auth.astro (syncUserDataWithBackend): Accessing token from userForSync.token.access_token:', userForSync?.token?.access_token);
-
-    if (!userForSync || !userForSync.token || !userForSync.token.access_token) {
-      console.error('Auth.astro (syncUserDataWithBackend): Token check FAILED. userForSync or its token is invalid. Sync aborted.');
-      if (localStorage.getItem('signupPlan')) { 
-          showAuthMessage('Profile sync failed: Unauthorized: No user context or token.', 'error');
-      }
-      return; 
+  async function syncUserDataWithBackend(netlifyUser, userData) {
+    if (!netlifyUser || !netlifyUser.token || !netlifyUser.token.access_token) {
+      console.error('Cannot sync user data: Netlify user or token missing.');
+      showAuthMessage('Could not sync your profile data. Please try logging in again.', 'error');
+      return;
     }
-    console.log('Auth.astro (syncUserDataWithBackend): Token check PASSED. Proceeding with sync.');
-    
+    if (!userData.username || userData.username.trim() === '') {
+        console.warn('Cannot sync user data: Username to sync is undefined or empty.');
+        return;
+    }
+
     showAuthMessage('Syncing profile with backend...', 'info');
-    
-    const payload = { 
-      username: userDataToSync.username.trim(),
-    };
-
-    if (userDataToSync.phone !== null && userDataToSync.phone !== undefined) {
-      payload.phone = userDataToSync.phone;
-    }
-    if (userDataToSync.subscription_plan !== null && userDataToSync.subscription_plan !== undefined && userDataToSync.subscription_plan.trim() !== '') {
-      payload.subscription_plan = userDataToSync.subscription_plan;
-    }
-    
-    console.log("Auth.astro: Payload for set-user-data:", payload);
-
     try {
+      const payload = { 
+        username: userData.username,
+        phone: userData.phone, // Will be null if not provided
+        subscription_plan: userData.subscription_plan // Will be null if not provided
+      };
+
       const response = await fetch('/.netlify/functions/set-user-data', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${userForSync.token.access_token}`, // Usa il token da userForSync
+          'Authorization': `Bearer ${netlifyUser.token.access_token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload),
@@ -155,136 +142,83 @@
         throw new Error(data.error || data.details || `Server error ${response.status}`);
       }
 
-      console.log('Auth.astro: Set user data response:', data);
-      showAuthMessage(`Profile synced! Username: ${data.profile?.username || payload.username}`, 'success');
+      console.log('Set user data response:', data);
+      showAuthMessage(`Profile synced! Username: ${data.profile?.username || userData.username}`, 'success');
       document.dispatchEvent(new CustomEvent('userProfileUpdated', { detail: data }));
 
     } catch (err) {
-      console.error('Auth.astro: Error calling set-user-data:', err);
+      console.error('Error calling set-user-data:', err);
       showAuthMessage(`Profile sync failed: ${err.message}`, 'error');
       document.dispatchEvent(new CustomEvent('userProfileUpdated', { detail: null, error: err.message }));
     }
   }
 
   function initializeNetlifyIdentity() {
-    if (window.netlifyIdentityInitialized) return;
+    if (window.netlifyIdentityInitialized) {
+      console.log("Netlify Identity already initialized by this script.");
+      return;
+    }
     window.netlifyIdentityInitialized = true;
 
     const netlifyIdentity = window.netlifyIdentity;
     if (!netlifyIdentity) {
-        console.error("Auth.astro: Netlify Identity widget not loaded.");
-        showAuthMessage("Authentication service failed to load.", "error");
+        console.error("Netlify Identity widget not loaded onto window object.");
+        showAuthMessage("Authentication service failed to load properly.", "error");
         return;
     }
      
-    console.log("Auth.astro: Dispatching netlifyIdentityReady event.");
+    console.log("Dispatching netlifyIdentityReady event.");
     window.dispatchEvent(new Event('netlifyIdentityReady'));
 
     netlifyIdentity.on('init', (user) => {
-      console.log('Auth.astro: Netlify Identity init event. User:', user ? 'User object present' : 'No user');
-      if(user) console.log('Auth.astro init: User token details:', JSON.stringify(user.token, null, 2));
-      updateAuthDisplay(user); 
+      console.log('Netlify Identity: init event. User:', user);
+      updateAuthDisplay(user);
       if (user) {
-        if (user.token && user.token.access_token) {
-            console.log('Auth.astro init: User and token available. Dispatching userLoggedIn.');
-            document.dispatchEvent(new CustomEvent('userLoggedIn', { detail: user }));
-        } else {
-            console.warn("Auth.astro init: User object present, but token is missing. userLoggedIn event deferred.");
-        }
+        document.dispatchEvent(new CustomEvent('userLoggedIn', { detail: user }));
+        const userDataToSync = getCustomSignupDataForSync(user);
+        if (userDataToSync.username) syncUserDataWithBackend(user, userDataToSync);
       } else {
-        console.log('Auth.astro init: No user. Dispatching userLoggedOut.');
         document.dispatchEvent(new CustomEvent('userLoggedOut'));
       }
     });
 
-    netlifyIdentity.on('login', async (user) => { // Handler reso async
-      console.log('Auth.astro: Netlify Identity login event. User object initial:', user ? 'User object present' : 'No user');
-      if(user) console.log('Auth.astro login: Initial user token details:', JSON.stringify(user.token, null, 2));
-      
-      updateAuthDisplay(user); 
+    netlifyIdentity.on('login', (user) => {
+      console.log('Netlify Identity: login event. User:', user);
+      updateAuthDisplay(user);
       netlifyIdentity.close(); 
       showAuthMessage('Login successful! Welcome back.', 'success');
+       
+      const userDataToSync = getCustomSignupDataForSync(user);
+      // For login, user_metadata.full_name might be more relevant than localStorage if user already exists.
+      // However, if localStorage has values (e.g., from an interrupted signup), we might want to use them.
+      // The getCustomSignupDataForSync handles this logic.
+      if (userDataToSync.username) syncUserDataWithBackend(user, userDataToSync);
+      document.dispatchEvent(new CustomEvent('userLoggedIn', { detail: user }));
       
-      let freshAccessToken = null;
-      let userForSyncProcessing = user; // Inizia con l'utente dell'evento
-
-      if (user && typeof user.jwt === 'function') {
-        try {
-          console.log('Auth.astro login: Attempting to refresh JWT with user.jwt(true).');
-          freshAccessToken = await user.jwt(true); // Forza il refresh del token e ottieni la stringa del token
-          console.log('Auth.astro login: user.jwt(true) resolved. Token string:', freshAccessToken ? 'Token string present' : 'Token string NOT present');
-          
-          if (freshAccessToken) {
-            // Aggiorna (o crea) l'oggetto token sull'utente che passeremo a syncUserDataWithBackend
-            // Questo è cruciale perché user.jwt(true) potrebbe non aggiornare user.token immediatamente
-            // o in modo affidabile in tutte le versioni del widget.
-            userForSyncProcessing = { 
-                ...user, // Copia le altre proprietà dell'utente
-                token: { 
-                    ...user.token, // Copia altre proprietà del token se esistono (es. expires_at)
-                    access_token: freshAccessToken 
-                } 
-            };
-            console.log('Auth.astro login: Constructed userForSyncProcessing with new token:', JSON.stringify(userForSyncProcessing.token, null, 2));
-          } else {
-            console.warn('Auth.astro login: user.jwt(true) did not return a token string. Will rely on original user.token if available.');
-          }
-        } catch (jwtError) {
-          console.error("Auth.astro login: Error during user.jwt(true) token refresh:", jwtError);
-          showAuthMessage('Login succeeded but failed to ensure token freshness. Profile sync may be unreliable.', 'error');
-          // Nonostante l'errore, user.token originale potrebbe essere ancora valido, userForSyncProcessing rimane l'utente originale
-        }
-      } else if (user && user.token && user.token.access_token) {
-        console.log('Auth.astro login: user.jwt not a function or user null, but initial token seems present.');
-        freshAccessToken = user.token.access_token; // Usa il token esistente
-      } else {
-        console.error('Auth.astro login: User object or user.jwt function not available, or no initial token.');
-      }
-
-      // Ora controlla il token sull'oggetto userForSyncProcessing
-      if (userForSyncProcessing && userForSyncProcessing.token && userForSyncProcessing.token.access_token) {
-        console.log('Auth.astro login: Token is considered available. Proceeding with sync logic.');
-        const planFromStorage = localStorage.getItem('signupPlan');
-        if (planFromStorage) { 
-            console.log('Auth.astro login: planFromStorage found, indicating signup flow. Proceeding to sync custom data.');
-            const userDataToSync = getCustomSignupDataForBackend(userForSyncProcessing); // Usa userForSyncProcessing
-            if (userDataToSync.username) { 
-                syncUserDataWithBackend(userForSyncProcessing, userDataToSync); // Passa userForSyncProcessing
-            } else {
-                console.warn("Auth.astro login: No username in userDataToSync after signup flow.");
-            }
-        } else {
-            console.log("Auth.astro login: No specific signup data (plan) in localStorage to sync. Skipping set-user-data call for this login.");
-        }
-        document.dispatchEvent(new CustomEvent('userLoggedIn', { detail: userForSyncProcessing })); // Invia l'utente potenzialmente aggiornato
-      } else {
-          console.error("Auth.astro login: Final token check FAILED. Token is not available even after attempts. User token details:", userForSyncProcessing ? JSON.stringify(userForSyncProcessing.token, null, 2) : 'userForSyncProcessing is null');
-          showAuthMessage('Login succeeded but token is not ready. Profile sync failed.', 'error');
-          document.dispatchEvent(new CustomEvent('userLoggedIn', { detail: user })); // Invia l'utente originale
-      }
-      
+      // Clear stored custom signup data after successful login/sync
       localStorage.removeItem('signupUsername');
       localStorage.removeItem('signupPhone');
       localStorage.removeItem('signupPlan');
     });
 
     netlifyIdentity.on('logout', () => {
-      console.log('Auth.astro: Netlify Identity logout event.');
-      updateAuthDisplay(null); 
+      console.log('Netlify Identity: logout event.');
+      updateAuthDisplay(null);
       showAuthMessage('Logged out successfully.', 'info');
-      document.dispatchEvent(new CustomEvent('userLoggedOut')); 
+      document.dispatchEvent(new CustomEvent('userLoggedOut'));
       localStorage.removeItem('signupUsername'); 
       localStorage.removeItem('signupPhone');
       localStorage.removeItem('signupPlan');
     });
 
     netlifyIdentity.on('error', (err) => {
-      console.error('Auth.astro: Netlify Identity Error:', err);
+      console.error('Netlify Identity Error:', err);
       showAuthMessage(`Auth Error: ${err.message || 'An unknown error occurred.'}`, 'error');
     });
 
     netlifyIdentity.on('open', (modalType) => {
-      console.log('Auth.astro: Netlify Identity modal opened:', modalType);
+      console.log('Netlify Identity modal opened:', modalType);
+      // Custom data is already stored in localStorage by the custom signup trigger
     });
     
     const customSignupTrigger = document.getElementById('custom-signup-trigger');
@@ -295,39 +229,39 @@
     if (customSignupTrigger && signupUsernameEl && signupPhoneEl && signupPlanEl) {
       customSignupTrigger.addEventListener('click', () => {
         const username = signupUsernameEl.value.trim();
-        const phone = signupPhoneEl.value.trim(); 
-        const plan = signupPlanEl.value; 
+        const phone = signupPhoneEl.value.trim();
+        const plan = signupPlanEl.value;
 
         if (!username) {
           showAuthMessage('Please enter a username to proceed with signup.', 'error');
           signupUsernameEl.focus();
           return;
         }
-        if (!plan) { 
+        // Phone and plan can be optional, add validation if they are mandatory
+        if (!plan) {
             showAuthMessage('Please select a subscription plan.', 'error');
             signupPlanEl.focus();
             return;
         }
 
         localStorage.setItem('signupUsername', username);
-        localStorage.setItem('signupPhone', phone); 
-        localStorage.setItem('signupPlan', plan);
+        localStorage.setItem('signupPhone', phone); // Store phone even if empty, let backend handle it
+        localStorage.setItem('signupPlan', plan); // Store plan
         
         netlifyIdentity.open('signup'); 
       });
     }
     
     const currentUser = netlifyIdentity.currentUser();
-    console.log("Auth.astro: Initial check for current user after all event listeners set up:", currentUser ? 'User object present' : 'No user');
-    if(currentUser) console.log('Auth.astro initial check: User token details:', JSON.stringify(currentUser.token, null, 2));
-    updateAuthDisplay(currentUser); 
+    console.log("Auth.astro: Initial check for current user:", currentUser);
+    updateAuthDisplay(currentUser);
     if (currentUser) {
-      if (currentUser.token && currentUser.token.access_token) {
-        console.log("Auth.astro initial check (end of init): Current user and token available. Dispatching userLoggedIn.");
-        document.dispatchEvent(new CustomEvent('userLoggedIn', { detail: currentUser }));
-      } else {
-         console.warn("Auth.astro initial check (end of init): Current user exists but token missing. userLoggedIn event deferred.");
-      }
+      console.log("Auth.astro: Current user exists on init, ensuring login event and sync.");
+      document.dispatchEvent(new CustomEvent('userLoggedIn', { detail: currentUser }));
+      const userDataToSync = getCustomSignupDataForSync(currentUser);
+      if (userDataToSync.username) syncUserDataWithBackend(currentUser, userDataToSync);
+    } else {
+      document.dispatchEvent(new CustomEvent('userLoggedOut'));
     }
   }
   

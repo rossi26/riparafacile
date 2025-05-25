@@ -29,9 +29,8 @@ export const handler = async (event, context) => {
   }
 
   const { user } = context.clientContext;
-  if (!user || !user.token) { // Aggiunto controllo per user.token
-    console.error('set-user-data: Unauthorized - No user context or token.');
-    return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized: No user context or token.' }) };
+  if (!user) {
+    return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized: No user context.' }) };
   }
 
   let requestBody;
@@ -41,75 +40,58 @@ export const handler = async (event, context) => {
     return { statusCode: 400, body: JSON.stringify({ error: 'Bad request: Invalid JSON.' }) };
   }
    
-  // Rinomino planFromRequest per chiarezza, phone rimane phone
-  const { username, phone, subscription_plan: planFromRequest } = requestBody;
+  const { username, phone, subscription_plan } = requestBody; // Destructure new fields
 
   if (!username || typeof username !== 'string' || username.trim() === '') {
       return { statusCode: 400, body: JSON.stringify({ error: 'Username is required and must be a non-empty string.' }) };
   }
-  // Validazione per phone: se fornito e non nullo, deve essere una stringa.
-  if (phone !== undefined && phone !== null && typeof phone !== 'string') {
+  // Add validation for subscription_plan if it's mandatory
+  if (!subscription_plan || typeof subscription_plan !== 'string' || subscription_plan.trim() === '') {
+    return { statusCode: 400, body: JSON.stringify({ error: 'Subscription plan is required.' }) };
+  }
+  // Phone can be optional, so we might not validate its presence as strictly,
+  // but we should ensure it's a string if provided.
+  if (phone && typeof phone !== 'string') {
     return { statusCode: 400, body: JSON.stringify({ error: 'Phone, if provided, must be a string.' }) };
   }
-  // Validazione per planFromRequest: se fornito e non nullo, deve essere una stringa.
-  if (planFromRequest !== undefined && planFromRequest !== null && typeof planFromRequest !== 'string') {
-    return { statusCode: 400, body: JSON.stringify({ error: 'Subscription plan, if provided, must be a string.' }) };
-  }
+
 
   const netlify_id = user.sub;
   const email = user.email;
-  const currentTime = new Date().toISOString();
-  const trimmedUsername = username.trim();
 
   try {
     const { data: existingProfile, error: selectError } = await supabase
       .from('user_profiles')
-      .select('netlify_id') // Seleziona solo un campo per verificare l'esistenza
+      .select('netlify_id')
       .eq('netlify_id', netlify_id)
       .maybeSingle();
 
     if (selectError && selectError.code !== 'PGRST116') { 
       console.error('Supabase select error in set-user-data:', selectError);
-      throw selectError; // Lascia che il blocco catch principale gestisca questo
+      throw selectError;
     }
 
     let userProfileData;
-    
-    if (existingProfile) {
-      // Utente esistente: costruisci il payload per l'aggiornamento
-      const updatePayload = {
-        email: email, // Sincronizza sempre l'email
-        username: trimmedUsername, // Sincronizza sempre lo username
+    const currentTime = new Date().toISOString();
+    const trimmedUsername = username.trim();
+    const trimmedPhone = phone ? phone.trim() : null; // Trim phone if it exists, otherwise null
+    const trimmedPlan = subscription_plan.trim();
+
+
+    const profilePayload = {
+        email: email,
+        username: trimmedUsername,
+        phone: trimmedPhone, // Add phone to payload
+        subscription_plan: trimmedPlan, // Add plan to payload
         updated_at: currentTime,
-      };
+    };
 
-      // Aggiungi phone al payload solo se è stato fornito nella richiesta
-      if (phone !== undefined) {
-        updatePayload.phone = (phone === null) ? null : phone.trim();
-      }
-
-      // Aggiungi subscription_plan al payload solo se è stato fornito nella richiesta
-      if (planFromRequest !== undefined) {
-        if (planFromRequest === null || !planFromRequest.trim()) {
-            // Se il piano è esplicitamente nullo o una stringa vuota per un utente esistente,
-            // potresti volerlo impostare a null o generare un errore se non è permesso.
-            // Per ora, se fornito vuoto, lo impostiamo a null (o potresti restituire un errore 400).
-            // Se la logica di business richiede che un piano non possa essere rimosso una volta impostato,
-            // aggiungi qui un controllo.
-            updatePayload.subscription_plan = null; 
-            // Oppure: return { statusCode: 400, body: JSON.stringify({ error: 'Subscription plan cannot be empty if provided for update.' }) };
-        } else {
-            updatePayload.subscription_plan = planFromRequest.trim();
-        }
-      }
-      // Se phone o planFromRequest sono undefined, non vengono inclusi in updatePayload,
-      // quindi Supabase non modificherà quei campi.
-
+    if (existingProfile) {
       const { data: updatedData, error: updateError } = await supabase
         .from('user_profiles')
-        .update(updatePayload)
+        .update(profilePayload) // Use the combined payload
         .eq('netlify_id', netlify_id)
-        .select('username, email, netlify_id, created_at, updated_at, phone, subscription_plan')
+        .select('username, email, netlify_id, created_at, updated_at, phone, subscription_plan') // Select new fields
         .single();
 
       if (updateError) {
@@ -119,26 +101,16 @@ export const handler = async (event, context) => {
       userProfileData = updatedData;
       console.log(`User profile for ${netlify_id} updated in Supabase.`);
     } else {
-      // Nuovo utente: subscription_plan è obbligatorio
-      if (planFromRequest === undefined || planFromRequest === null || typeof planFromRequest !== 'string' || !planFromRequest.trim()) {
-        return { statusCode: 400, body: JSON.stringify({ error: 'Subscription plan is required for new user registration.' }) };
-      }
-
+      // For new profiles, also set created_at
       const insertPayload = {
+        ...profilePayload,
         netlify_id: netlify_id,
-        email: email,
-        username: trimmedUsername,
-        // Phone è opzionale per i nuovi utenti, imposta a null se non fornito o fornito come null
-        phone: (phone === undefined || phone === null) ? null : phone.trim(),
-        subscription_plan: planFromRequest.trim(),
         created_at: currentTime,
-        updated_at: currentTime,
       };
-      
       const { data: insertedData, error: insertError } = await supabase
         .from('user_profiles')
-        .insert(insertPayload)
-        .select('username, email, netlify_id, created_at, updated_at, phone, subscription_plan')
+        .insert(insertPayload) // Use the combined payload including netlify_id and created_at
+        .select('username, email, netlify_id, created_at, updated_at, phone, subscription_plan') // Select new fields
         .single();
 
       if (insertError) {
