@@ -110,24 +110,19 @@
     };
   }
 
-  async function syncUserDataWithBackend(netlifyUser, userDataToSync) {
-    console.log('Auth.astro (syncUserDataWithBackend): Entered function. Checking token.');
-    if (netlifyUser && netlifyUser.token) {
-        console.log('Auth.astro (syncUserDataWithBackend): netlifyUser.token object:', JSON.stringify(netlifyUser.token, null, 2));
-        console.log('Auth.astro (syncUserDataWithBackend): netlifyUser.token.access_token value:', netlifyUser.token.access_token);
-    } else {
-        console.log('Auth.astro (syncUserDataWithBackend): netlifyUser or netlifyUser.token is null/undefined.');
-    }
+  async function syncUserDataWithBackend(userForSync, userDataToSync) {
+    // Questo userForSync è l'oggetto utente che dovrebbe avere il token aggiornato.
+    console.log('Auth.astro (syncUserDataWithBackend): Entered. User object for sync:', JSON.stringify(userForSync, null, 2));
+    console.log('Auth.astro (syncUserDataWithBackend): Accessing token from userForSync.token.access_token:', userForSync?.token?.access_token);
 
-    if (!netlifyUser || !netlifyUser.token || !netlifyUser.token.access_token) {
-      console.error('Auth.astro (syncUserDataWithBackend): Inner token check FAILED. Sync aborted.');
-      // Mostra l'errore solo se stiamo effettivamente cercando di sincronizzare dati significativi (es. da signup)
+    if (!userForSync || !userForSync.token || !userForSync.token.access_token) {
+      console.error('Auth.astro (syncUserDataWithBackend): Token check FAILED. userForSync or its token is invalid. Sync aborted.');
       if (localStorage.getItem('signupPlan')) { 
           showAuthMessage('Profile sync failed: Unauthorized: No user context or token.', 'error');
       }
       return; 
     }
-    console.log('Auth.astro (syncUserDataWithBackend): Inner token check PASSED. Proceeding with sync.');
+    console.log('Auth.astro (syncUserDataWithBackend): Token check PASSED. Proceeding with sync.');
     
     showAuthMessage('Syncing profile with backend...', 'info');
     
@@ -148,7 +143,7 @@
       const response = await fetch('/.netlify/functions/set-user-data', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${netlifyUser.token.access_token}`,
+          'Authorization': `Bearer ${userForSync.token.access_token}`, // Usa il token da userForSync
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload),
@@ -172,16 +167,13 @@
   }
 
   function initializeNetlifyIdentity() {
-    if (window.netlifyIdentityInitialized) {
-      console.log("Auth.astro: Netlify Identity already initialized by this script.");
-      return;
-    }
+    if (window.netlifyIdentityInitialized) return;
     window.netlifyIdentityInitialized = true;
 
     const netlifyIdentity = window.netlifyIdentity;
     if (!netlifyIdentity) {
-        console.error("Auth.astro: Netlify Identity widget not loaded onto window object.");
-        showAuthMessage("Authentication service failed to load properly.", "error");
+        console.error("Auth.astro: Netlify Identity widget not loaded.");
+        showAuthMessage("Authentication service failed to load.", "error");
         return;
     }
      
@@ -189,7 +181,8 @@
     window.dispatchEvent(new Event('netlifyIdentityReady'));
 
     netlifyIdentity.on('init', (user) => {
-      console.log('Auth.astro: Netlify Identity init event. User:', user);
+      console.log('Auth.astro: Netlify Identity init event. User:', user ? 'User object present' : 'No user');
+      if(user) console.log('Auth.astro init: User token details:', JSON.stringify(user.token, null, 2));
       updateAuthDisplay(user); 
       if (user) {
         if (user.token && user.token.access_token) {
@@ -205,55 +198,69 @@
     });
 
     netlifyIdentity.on('login', async (user) => { // Handler reso async
-      console.log('Auth.astro: Netlify Identity login event. User object initial:', JSON.stringify(user, null, 2));
+      console.log('Auth.astro: Netlify Identity login event. User object initial:', user ? 'User object present' : 'No user');
+      if(user) console.log('Auth.astro login: Initial user token details:', JSON.stringify(user.token, null, 2));
+      
       updateAuthDisplay(user); 
       netlifyIdentity.close(); 
       showAuthMessage('Login successful! Welcome back.', 'success');
       
-      let freshTokenAvailable = false;
-      try {
-        if (user && typeof user.jwt === 'function') {
-            console.log('Auth.astro login: Attempting to refresh JWT.');
-            const token = await user.jwt(true); // Forza il refresh del token
-            console.log('Auth.astro login: Fresh JWT obtained/refreshed:', token ? 'Token is present' : 'Token is NOT present');
-            // Netlify Identity widget dovrebbe aggiornare internamente user.token dopo user.jwt()
-            // Quindi, il successivo controllo su user.token.access_token dovrebbe riflettere lo stato aggiornato.
-            if (user.token && user.token.access_token) {
-                freshTokenAvailable = true;
-            }
-        } else if (user && user.token && user.token.access_token) {
-            // Se user.jwt non è una funzione (vecchia versione del widget?) ma il token è già lì
-            console.log('Auth.astro login: user.jwt not a function, but initial token seems present.');
-            freshTokenAvailable = true;
+      let freshAccessToken = null;
+      let userForSyncProcessing = user; // Inizia con l'utente dell'evento
+
+      if (user && typeof user.jwt === 'function') {
+        try {
+          console.log('Auth.astro login: Attempting to refresh JWT with user.jwt(true).');
+          freshAccessToken = await user.jwt(true); // Forza il refresh del token e ottieni la stringa del token
+          console.log('Auth.astro login: user.jwt(true) resolved. Token string:', freshAccessToken ? 'Token string present' : 'Token string NOT present');
+          
+          if (freshAccessToken) {
+            // Aggiorna (o crea) l'oggetto token sull'utente che passeremo a syncUserDataWithBackend
+            // Questo è cruciale perché user.jwt(true) potrebbe non aggiornare user.token immediatamente
+            // o in modo affidabile in tutte le versioni del widget.
+            userForSyncProcessing = { 
+                ...user, // Copia le altre proprietà dell'utente
+                token: { 
+                    ...user.token, // Copia altre proprietà del token se esistono (es. expires_at)
+                    access_token: freshAccessToken 
+                } 
+            };
+            console.log('Auth.astro login: Constructed userForSyncProcessing with new token:', JSON.stringify(userForSyncProcessing.token, null, 2));
+          } else {
+            console.warn('Auth.astro login: user.jwt(true) did not return a token string. Will rely on original user.token if available.');
+          }
+        } catch (jwtError) {
+          console.error("Auth.astro login: Error during user.jwt(true) token refresh:", jwtError);
+          showAuthMessage('Login succeeded but failed to ensure token freshness. Profile sync may be unreliable.', 'error');
+          // Nonostante l'errore, user.token originale potrebbe essere ancora valido, userForSyncProcessing rimane l'utente originale
         }
-      } catch (jwtError) {
-        console.error("Auth.astro login: Error during user.jwt() token refresh:", jwtError);
-        showAuthMessage('Login succeeded but failed to ensure token freshness. Profile sync may be unreliable.', 'error');
-        // Nonostante l'errore nel refresh, il token originale potrebbe ancora essere valido.
-        if (user && user.token && user.token.access_token) {
-            freshTokenAvailable = true; // Prova con il token esistente
-        }
+      } else if (user && user.token && user.token.access_token) {
+        console.log('Auth.astro login: user.jwt not a function or user null, but initial token seems present.');
+        freshAccessToken = user.token.access_token; // Usa il token esistente
+      } else {
+        console.error('Auth.astro login: User object or user.jwt function not available, or no initial token.');
       }
 
-      if (freshTokenAvailable) {
-        console.log('Auth.astro login: Token is considered available/refreshed. User token details:', JSON.stringify(user.token, null, 2));
+      // Ora controlla il token sull'oggetto userForSyncProcessing
+      if (userForSyncProcessing && userForSyncProcessing.token && userForSyncProcessing.token.access_token) {
+        console.log('Auth.astro login: Token is considered available. Proceeding with sync logic.');
         const planFromStorage = localStorage.getItem('signupPlan');
-        if (planFromStorage) { // Indica un flusso di signup
+        if (planFromStorage) { 
             console.log('Auth.astro login: planFromStorage found, indicating signup flow. Proceeding to sync custom data.');
-            const userDataToSync = getCustomSignupDataForBackend(user);
+            const userDataToSync = getCustomSignupDataForBackend(userForSyncProcessing); // Usa userForSyncProcessing
             if (userDataToSync.username) { 
-                syncUserDataWithBackend(user, userDataToSync);
+                syncUserDataWithBackend(userForSyncProcessing, userDataToSync); // Passa userForSyncProcessing
             } else {
                 console.warn("Auth.astro login: No username in userDataToSync after signup flow.");
             }
         } else {
             console.log("Auth.astro login: No specific signup data (plan) in localStorage to sync. Skipping set-user-data call for this login.");
         }
-        document.dispatchEvent(new CustomEvent('userLoggedIn', { detail: user }));
+        document.dispatchEvent(new CustomEvent('userLoggedIn', { detail: userForSyncProcessing })); // Invia l'utente potenzialmente aggiornato
       } else {
-          console.error("Auth.astro login: Token check FAILED even after attempting refresh. User token details:", user ? JSON.stringify(user.token, null, 2) : 'user object is null');
-          showAuthMessage('Login succeeded but token is still not ready. Profile sync failed.', 'error');
-          document.dispatchEvent(new CustomEvent('userLoggedIn', { detail: user })); // UserProfile gestirà il token mancante
+          console.error("Auth.astro login: Final token check FAILED. Token is not available even after attempts. User token details:", userForSyncProcessing ? JSON.stringify(userForSyncProcessing.token, null, 2) : 'userForSyncProcessing is null');
+          showAuthMessage('Login succeeded but token is not ready. Profile sync failed.', 'error');
+          document.dispatchEvent(new CustomEvent('userLoggedIn', { detail: user })); // Invia l'utente originale
       }
       
       localStorage.removeItem('signupUsername');
@@ -311,7 +318,8 @@
     }
     
     const currentUser = netlifyIdentity.currentUser();
-    console.log("Auth.astro: Initial check for current user after all event listeners set up:", currentUser);
+    console.log("Auth.astro: Initial check for current user after all event listeners set up:", currentUser ? 'User object present' : 'No user');
+    if(currentUser) console.log('Auth.astro initial check: User token details:', JSON.stringify(currentUser.token, null, 2));
     updateAuthDisplay(currentUser); 
     if (currentUser) {
       if (currentUser.token && currentUser.token.access_token) {
