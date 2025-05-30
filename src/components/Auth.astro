@@ -117,7 +117,7 @@
       
       if (!userWithToken || !userWithToken.token || !userWithToken.token.access_token) {
         console.error('Auth.astro (sync): Token check FAILED. User object or token is invalid. Sync aborted.');
-        if (localStorage.getItem('signupPlan')) { 
+        if (localStorage.getItem('signupPlanOriginal')) { // Check original marker for signup flow
             showAuthMessage('Profile sync failed: Unauthorized: No user context or token.', 'error');
         }
         return; 
@@ -132,22 +132,18 @@
       if (userDataPayload.phone !== null && userDataPayload.phone !== undefined) {
         payload.phone = userDataPayload.phone; 
       }
-      // Ensure subscription_plan is included in the payload if it's a signup flow
       if (userDataPayload.subscription_plan) { 
         payload.subscription_plan = userDataPayload.subscription_plan;
-      } else if (localStorage.getItem('signupPlan')) {
-        // Fallback if getSignupDataForBackend somehow didn't pick it up but it was in localStorage
-        // This is a safeguard, ideally getSignupDataForBackend should handle it.
-        payload.subscription_plan = localStorage.getItem('signupPlan');
       }
       
-      // Double check: If it's a signup flow (plan was in localStorage), payload.subscription_plan must exist.
-      // The set-user-data function will enforce this for new users.
-      if (localStorage.getItem('signupPlanOriginal') && !payload.subscription_plan) { // 'signupPlanOriginal' to avoid confusion with current logic
-          console.error("Auth.astro (sync): Signup flow detected, but subscription_plan is missing from payload. Aborting sync.");
-          showAuthMessage('Signup data incomplete (plan missing in payload). Profile sync failed.', 'error');
-          return;
-      }
+      // This check was a bit redundant if getSignupDataForBackend and the login event logic are correct.
+      // The main thing is that `payload.subscription_plan` must be set if it's a new user,
+      // which `set-user-data.js` will enforce.
+      // if (localStorage.getItem('signupPlanOriginal') && !payload.subscription_plan) { 
+      //     console.error("Auth.astro (sync): Signup flow, but subscription_plan missing from payload. Aborting.");
+      //     showAuthMessage('Signup data incomplete (plan missing). Profile sync failed.', 'error');
+      //     return;
+      // }
       
       console.log("Auth.astro (sync): Payload to set-user-data:", payload);
 
@@ -208,13 +204,16 @@
       netlifyIdentity.on('login', async (user) => {
         console.log('Auth.astro: login event. User initial:', user ? 'Present' : 'Absent', 'Initial Token:', user?.token?.access_token ? 'Present' : 'Absent');
         updateAuthDisplay(user); 
-        // Do not close widget here yet, wait for sync or error handling.
-        // netlifyIdentity.close(); 
-        showAuthMessage('Login successful! Processing...', 'info'); // Changed message
+        showAuthMessage('Login successful! Processing...', 'info'); 
         
         let userObjectForSync = user; 
+        const isSignupFlow = !!localStorage.getItem('signupPlanOriginal');
 
         if (user && typeof user.jwt === 'function') {
+          if (isSignupFlow) {
+            console.log("Auth.astro login: Signup flow detected. Adding small delay before JWT refresh.");
+            await new Promise(resolve => setTimeout(resolve, 750)); // 0.75 second delay
+          }
           try {
             console.log('Auth.astro login: Attempting to refresh JWT with user.jwt(true).');
             const freshTokenString = await user.jwt(true); 
@@ -230,7 +229,7 @@
               };
               console.log('Auth.astro login: userObjectForSync prepared with refreshed token.');
             } else {
-              console.warn('Auth.astro login: user.jwt(true) did not return a token string.');
+              console.warn('Auth.astro login: user.jwt(true) did not return a token string. Original token (if any) will be used.');
             }
           } catch (jwtError) {
             console.error("Auth.astro login: Error refreshing JWT:", jwtError);
@@ -239,42 +238,36 @@
             console.log('Auth.astro login: user.jwt is not a function or user object is null.');
         }
         
+        // Close widget AFTER attempting token refresh and before sync logic
+        netlifyIdentity.close(); 
+
         if (userObjectForSync && userObjectForSync.token && userObjectForSync.token.access_token) {
           console.log('Auth.astro login: Token is available on userObjectForSync.');
           const signupData = getSignupDataForBackend(userObjectForSync); 
           
-          // Crucial for registration: if signupPlan was stored, it's a new registration.
-          // The backend (set-user-data) requires subscription_plan for new users.
-          const isSignupFlow = !!localStorage.getItem('signupPlanOriginal'); // Use the original marker
-
           if (isSignupFlow) {
-            console.log('Auth.astro login: Signup flow detected (signupPlanOriginal in localStorage). Syncing data.');
-            // Ensure signupData includes the plan for the backend.
-            // getSignupDataForBackend should already retrieve it from 'signupPlan'.
+            console.log('Auth.astro login: Signup flow. Syncing data.');
             if (signupData.username && signupData.subscription_plan) { 
               await syncUserDataWithBackend(userObjectForSync, signupData); 
             } else {
                  console.error('Auth.astro login: Signup flow, but username or plan missing from signupData. Sync aborted.', signupData);
-                 showAuthMessage('Signup data incomplete. Profile sync failed.', 'error');
+                 showAuthMessage('Signup data incomplete (username or plan missing). Profile sync failed.', 'error');
             }
           } else {
             console.log('Auth.astro login: Not a signup flow. Skipping syncUserDataWithBackend.');
-            // For regular login, we might still want to show a success message if not handled by sync
-             showAuthMessage('Login successful! Welcome back.', 'success');
+            showAuthMessage('Login successful! Welcome back.', 'success'); // Show final success if not signup
           }
           document.dispatchEvent(new CustomEvent('userLoggedIn', { detail: userObjectForSync }));
-          netlifyIdentity.close(); // Close widget after successful processing or decision to skip sync
         } else {
             console.error("Auth.astro login: Token NOT available on userObjectForSync. Sync aborted.");
             showAuthMessage('Login ok, but token issue. Profile sync might fail.', 'error');
             document.dispatchEvent(new CustomEvent('userLoggedIn', { detail: user })); 
-            netlifyIdentity.close(); // Close widget even if token failed
         }
         
         localStorage.removeItem('signupUsername');
         localStorage.removeItem('signupPhone');
         localStorage.removeItem('signupPlan');
-        localStorage.removeItem('signupPlanOriginal'); // Clean up the marker
+        localStorage.removeItem('signupPlanOriginal'); 
       });
 
       netlifyIdentity.on('logout', () => {
@@ -291,20 +284,19 @@
       netlifyIdentity.on('error', (err) => {
         console.error('Auth.astro: Netlify Identity Error:', err);
         showAuthMessage(`Auth Error: ${err.message || 'Unknown error.'}`, 'error');
-        // Do NOT close the widget here, let the user see the widget's own error message.
-        // The widget should handle its own state for retrying.
-        // netlifyIdentity.close(); 
+        // Do NOT close the widget here. Let the widget display its own error.
+        // The user can then close it manually or try again if the widget allows.
         
-        const customSignupFields = document.getElementById('custom-signup-fields');
-        if (!netlifyIdentity.currentUser()) { 
-             if (customSignupFields) customSignupFields.classList.remove('hidden');
-        }
-        // Clear localStorage only if the error is related to a signup attempt that stored these.
-        // This is tricky; for now, we'll clear them to prevent stale data carrying over.
+        // Clear localStorage as the action (signup/login) associated with it failed.
         localStorage.removeItem('signupUsername');
         localStorage.removeItem('signupPhone');
         localStorage.removeItem('signupPlan');
         localStorage.removeItem('signupPlanOriginal');
+        
+        // Update display to show signup fields if no user is logged in (error during signup/login)
+        if (!netlifyIdentity.currentUser()) {
+            updateAuthDisplay(null);
+        }
       });
 
       netlifyIdentity.on('open', (modalType) => {
@@ -326,11 +318,10 @@
           if (!username) { showAuthMessage('Username required.', 'error'); signupUsernameEl.focus(); return; }
           if (!plan) { showAuthMessage('Subscription plan required.', 'error'); signupPlanEl.focus(); return; }
           
-          // Store these values for the 'login' event to pick up after signup
           localStorage.setItem('signupUsername', username);
           localStorage.setItem('signupPhone', phone); 
           localStorage.setItem('signupPlan', plan);
-          localStorage.setItem('signupPlanOriginal', plan); // Marker for signup flow
+          localStorage.setItem('signupPlanOriginal', plan); 
           
           netlifyIdentity.open('signup'); 
         });
