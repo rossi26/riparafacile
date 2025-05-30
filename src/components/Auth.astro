@@ -127,7 +127,7 @@
         subscription_plan: userData.subscription_plan // Will be null if not provided
       };
 
-      const response = await fetch('/.netlify/functions/set-user-data', {
+      const response = await fetch('/.netlify/functions/get-user-data', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${netlifyUser.token.access_token}`,
