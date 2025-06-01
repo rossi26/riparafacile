@@ -225,7 +225,7 @@
         localStorage.removeItem('signupUsername');
         localStorage.removeItem('signupPhone');
         localStorage.removeItem('signupPlan');
-                netlifyIdentity.close(); // Close widget on error to allow retry
+                netlifyIdentity.open(); // Close widget on error to allow retry
 
     
     });
