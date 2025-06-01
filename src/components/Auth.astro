@@ -220,6 +220,11 @@
         localStorage.removeItem('signupPhone');
         localStorage.removeItem('signupPlan');
         localStorage.removeItem('signupPlanOriginal')
+         // Update display to show signup fields if no user is logged in
+
+        if (!netlifyIdentity.currentUser()) {
+            updateAuthDisplay(null);
+        }
     
     });
 
