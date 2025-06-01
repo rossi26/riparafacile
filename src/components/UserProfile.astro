@@ -27,7 +27,7 @@
   function displaySupabaseProfileData(data) {
     if (!profileDataEl || !userProfileContainerEl) return;
 
-    // *** LOG PER DEBUG: Controlla la console del browser ***
+    // *** LOG PER DEBUG: Controllas la console del browser ***
     console.log('Data received by displaySupabaseProfileData:', data);
 
     document.getElementById('profile-email').textContent = data.email || 'N/A';
