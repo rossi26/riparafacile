@@ -203,13 +203,14 @@
 
     netlifyIdentity.on('logout', () => {
       console.log('Netlify Identity: logout event.');
+     localStorage.removeItem('signupUsername'); 
+      localStorage.removeItem('signupPhone');
+      localStorage.removeItem('signupPlan');
       updateAuthDisplay(null);
       showAuthMessage('Logged out successfully.', 'info');
       document.dispatchEvent(new CustomEvent('userLoggedOut'));
-      localStorage.removeItem('signupUsername'); 
-      localStorage.removeItem('signupPhone');
-      localStorage.removeItem('signupPlan');
-      //Aaaaaaaaa
+      netlifyIdentity.close(); 
+
     });
 
     netlifyIdentity.on('error', (err) => {
