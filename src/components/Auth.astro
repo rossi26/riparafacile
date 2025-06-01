@@ -216,6 +216,11 @@
     netlifyIdentity.on('error', (err) => {
       console.error('Netlify Identity Error:', err);
       showAuthMessage(`Auth Error: ${err.message || 'An unknown error occurred.'}`, 'error');
+      localStorage.removeItem('signupUsername');
+        localStorage.removeItem('signupPhone');
+        localStorage.removeItem('signupPlan');
+        localStorage.removeItem('signupPlanOriginal')
+    
     });
 
     netlifyIdentity.on('open', (modalType) => {
