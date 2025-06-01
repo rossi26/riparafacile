@@ -123,6 +123,13 @@
         profileErrorEl.classList.add('hidden');
         profileErrorEl.textContent = '';
     }
+
+     const fieldsToClear = ['profile-email', 'profile-username', 'profile-netlify-id', 'profile-phone', 'profile-plan', 'profile-created-at', 'profile-updated-at'];
+    fieldsToClear.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = ''; 
+    });
+    
     if (profileLoadingEl) {
         profileLoadingEl.classList.remove('hidden'); 
         profileLoadingEl.textContent = 'Loading profile...';
