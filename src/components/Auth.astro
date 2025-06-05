@@ -1,289 +1,158 @@
 ---
-// src/components/Auth.astro
+// src/components/Auth.astro (Simplified for Login/Logout with Unified Form)
+// Signup is now handled by UnifiedSignupForm.astro and submission-created.js
 ---
 <div id="netlify-identity-auth-container" class="p-4 border border-gray-300 rounded-lg shadow-md bg-white">
   <h2 class="text-xl font-semibold mb-4 text-gray-700">User Authentication</h2>
   <div id="auth-status" class="mb-4 text-gray-600">Loading authentication status...</div>
 
+  {/* Netlify Identity Widget Login/Logout Buttons */}
   <div data-netlify-identity-button class="netlify-identity-button-container space-y-2">
-    </div>
-
-  <div id="custom-signup-fields" class="hidden mt-4 space-y-3">
-    <h3 class="text-lg font-medium text-gray-700">Create Account with Details</h3>
-    <div>
-      <label for="signup-username" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
-      <input type="text" id="signup-username" placeholder="Choose a username" class="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500" />
-    </div>
-    <div>
-      <label for="signup-phone" class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-      <input type="tel" id="signup-phone" placeholder="Your phone number" class="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500" />
-    </div>
-    <div>
-      <label for="signup-plan" class="block text-sm font-medium text-gray-700 mb-1">Subscription Plan</label>
-      <select id="signup-plan" class="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500">
-        <option value="">Select a plan</option>
-        <option value="basic">Basic Plan</option>
-        <option value="premium">Premium Plan</option>
-        <option value="enterprise">Enterprise Plan</option>
-      </select>
-    </div>
-    <button id="custom-signup-trigger" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition duration-150">
-      Proceed to Sign Up
-    </button>
-    <p class="text-xs text-gray-500">You'll enter email & password in the Netlify popup.</p>
   </div>
 
   <div id="auth-message" class="mt-3 text-sm"></div>
+
+  <p class="mt-6 text-center text-sm text-gray-600">
+    New user? 
+    <a href="/signup/" class="font-medium text-blue-600 hover:text-blue-500"> {/* Link to your UnifiedSignupForm page */}
+      Create an account
+    </a>
+  </p>
 </div>
 
 <script is:inline>
-  function loadNetlifyIdentityWidget() {
-    if (document.getElementById('netlify-identity-widget-script')) {
-      if (window.netlifyIdentity) {
-        initializeNetlifyIdentity();
-      } else {
-        console.warn("Netlify Identity script tag found, but widget not initialized. Waiting for it.");
-        const scriptTag = document.getElementById('netlify-identity-widget-script');
-        if(scriptTag && !scriptTag.dataset.onloadAttached) { 
-            scriptTag.addEventListener('load', initializeNetlifyIdentity);
-            scriptTag.dataset.onloadAttached = 'true';
-        } else if (!scriptTag) {
+  // Ensure this script block only initializes once
+  if (!window.myAppAuthComponentGlobalInit) {
+    window.myAppAuthComponentGlobalInit = true;
+
+    function loadNetlifyIdentityWidget() {
+      if (document.getElementById('netlify-identity-widget-script')) {
+        if (window.netlifyIdentity) {
+          initializeNetlifyIdentity();
+        } else {
+          console.warn("Auth.astro: Widget script tag found, but widget not initialized. Waiting for 'load'.");
+          const scriptTag = document.getElementById('netlify-identity-widget-script');
+          // Ensure 'load' listener is only added once if script tag exists but isn't loaded
+          if(scriptTag && !scriptTag.dataset.onloadAttached) { 
+              scriptTag.addEventListener('load', initializeNetlifyIdentity);
+              scriptTag.dataset.onloadAttached = 'true'; // Mark as attached
+          } else if (!scriptTag) { // If script tag somehow missing, re-add
             addNetlifyScript();
+          }
         }
-      }
-      return;
-    }
-    addNetlifyScript();
-  }
-
-  function addNetlifyScript() {
-    const netlifyIdentityScript = document.createElement('script');
-    netlifyIdentityScript.id = 'netlify-identity-widget-script';
-    netlifyIdentityScript.src = 'https://identity.netlify.com/v1/netlify-identity-widget.js';
-    netlifyIdentityScript.async = true;
-    document.head.appendChild(netlifyIdentityScript);
-    netlifyIdentityScript.onload = () => {
-      console.log("Netlify Identity Widget script loaded.");
-      initializeNetlifyIdentity();
-    };
-    netlifyIdentityScript.onerror = () => {
-        console.error("Failed to load Netlify Identity Widget script.");
-        showAuthMessage("Authentication service script failed to load.", "error");
-    };
-  }
-
-  function showAuthMessage(message, type = 'info') {
-    const messageEl = document.getElementById('auth-message');
-    if (messageEl) {
-      messageEl.textContent = message;
-      messageEl.className = `mt-3 text-sm ${type === 'error' ? 'text-red-500 font-semibold' : (type === 'success' ? 'text-green-600 font-semibold' : 'text-gray-600')}`;
-    }
-  }
-
-  function updateAuthDisplay(user) {
-    const authStatusEl = document.getElementById('auth-status');
-    const customSignupFields = document.getElementById('custom-signup-fields');
-    
-    if (authStatusEl) {
-      if (user) {
-        authStatusEl.innerHTML = `Logged in as: <strong class="font-medium">${user.user_metadata?.full_name || user.email}</strong>.`;
-        if (customSignupFields) customSignupFields.classList.add('hidden');
-      } else {
-        authStatusEl.textContent = 'You are not logged in. Sign up or log in below.';
-        if (customSignupFields) customSignupFields.classList.remove('hidden');
-      }
-    }
-  }
-
-  function getCustomSignupDataForSync(netlifyUser) {
-    if (!netlifyUser) return { username: null, phone: null, plan: null };
-    const emailPart = netlifyUser.email ? netlifyUser.email.split('@')[0] : 'user';
-    
-    // Prioritize data from localStorage if available (set during custom signup step)
-    // Then fallback to Netlify's metadata, then to email part for username.
-    return {
-        username: localStorage.getItem('signupUsername') || netlifyUser.user_metadata?.full_name || emailPart,
-        phone: localStorage.getItem('signupPhone') || netlifyUser.user_metadata?.phone || null, // Assuming phone might be in metadata
-        subscription_plan: localStorage.getItem('signupPlan') || netlifyUser.user_metadata?.subscription_plan || null // Assuming plan might be in metadata
-    };
-  }
-
-  async function syncUserDataWithBackend(netlifyUser, userData) {
-    if (!netlifyUser || !netlifyUser.token || !netlifyUser.token.access_token) {
-      console.error('Cannot sync user data: Netlify user or token missing.');
-      showAuthMessage('Could not sync your profile data. Please try logging in again.', 'error');
-      return;
-    }
-    if (!userData.username || userData.username.trim() === '') {
-        console.warn('Cannot sync user data: Username to sync is undefined or empty.');
         return;
+      }
+      addNetlifyScript();
     }
 
-    showAuthMessage('Syncing profile with backend...', 'info');
-    try {
-      const payload = { 
-        username: userData.username,
-        phone: userData.phone, // Will be null if not provided
-        subscription_plan: userData.subscription_plan // Will be null if not provided
+    function addNetlifyScript() {
+      const script = document.createElement('script');
+      script.id = 'netlify-identity-widget-script';
+      script.src = 'https://identity.netlify.com/v1/netlify-identity-widget.js';
+      script.async = true;
+      document.head.appendChild(script);
+      script.onload = () => {
+        console.log("Auth.astro: Netlify Identity Widget script loaded.");
+        initializeNetlifyIdentity();
       };
+      script.onerror = () => {
+          console.error("Auth.astro: Failed to load Netlify Identity Widget script.");
+          showAuthMessage("Authentication service script failed to load.", "error");
+      };
+    }
 
-      const response = await fetch('/.netlify/functions/set-user-data', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${netlifyUser.token.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
+    function showAuthMessage(message, type = 'info') {
+      const messageEl = document.getElementById('auth-message');
+      if (messageEl) {
+        messageEl.textContent = message;
+        messageEl.className = `mt-3 text-sm ${type === 'error' ? 'text-red-500 font-semibold' : (type === 'success' ? 'text-green-600 font-semibold' : 'text-gray-600')}`;
+      }
+    }
+
+    function updateAuthDisplay(user) {
+      const authStatusEl = document.getElementById('auth-status');
+      if (authStatusEl) {
+        authStatusEl.innerHTML = user ? 
+          `Logged in as: <strong class="font-medium">${user.user_metadata?.full_name || user.email}</strong>.` : 
+          'You are not logged in. Use the buttons above to log in or sign up.';
+      }
+      // The "Create an account" link is always visible for users who land here and are not logged in.
+      // The Netlify Identity widget buttons will show "Login" or "Signup" as appropriate if the user is not logged in.
+    }
+
+    function initializeNetlifyIdentity() {
+      // Prevent re-initialization of listeners
+      if (window.myAppNetlifyIdentityListenersInitialized) return;
+      window.myAppNetlifyIdentityListenersInitialized = true;
+
+      const netlifyIdentity = window.netlifyIdentity;
+      if (!netlifyIdentity) {
+          console.error("Auth.astro: Netlify Identity widget not available at initializeNetlifyIdentity.");
+          showAuthMessage("Authentication service failed to initialize.", "error");
+          return;
+      }
+      
+      console.log("Auth.astro: Dispatching netlifyIdentityReady event.");
+      window.dispatchEvent(new Event('netlifyIdentityReady'));
+
+      netlifyIdentity.on('init', (user) => {
+        console.log('Auth.astro: Netlify Identity init event. User:', user ? user.email : 'None');
+        updateAuthDisplay(user);
+        if (user && user.token && user.token.access_token) {
+          document.dispatchEvent(new CustomEvent('userLoggedIn', { detail: user }));
+        } else {
+          document.dispatchEvent(new CustomEvent('userLoggedOut'));
+        }
       });
 
-      const data = await response.json();
+      netlifyIdentity.on('login', (user) => {
+        console.log('Auth.astro: Netlify Identity login event. User:', user.email);
+        updateAuthDisplay(user);
+        netlifyIdentity.close(); // Close the widget modal on successful login
+        showAuthMessage('Login successful! Welcome back.', 'success');
+        if (user.token && user.token.access_token) {
+          document.dispatchEvent(new CustomEvent('userLoggedIn', { detail: user }));
+        } else {
+            console.warn("Auth.astro: Login event fired, but token is missing from user object.");
+        }
+      });
 
-      if (!response.ok) {
-        throw new Error(data.error || data.details || `Server error ${response.status}`);
-      }
+      netlifyIdentity.on('logout', () => {
+        console.log('Auth.astro: Netlify Identity logout event.');
+        updateAuthDisplay(null); 
+        showAuthMessage('Logged out successfully.', 'info');
+        document.dispatchEvent(new CustomEvent('userLoggedOut'));
+      });
 
-      console.log('Set user data response:', data);
-      showAuthMessage(`Profile synced! Username: ${data.profile?.username || userData.username}`, 'success');
-      document.dispatchEvent(new CustomEvent('userProfileUpdated', { detail: data }));
+      netlifyIdentity.on('error', (err) => {
+        console.error('Auth.astro: Netlify Identity Error:', err);
+        showAuthMessage(`Auth Error: ${err.message || 'An unknown error occurred.'}`, 'error');
+        // Do not close the widget automatically on error, so user can see widget's error message.
+        // updateAuthDisplay(netlifyIdentity.currentUser()); // Reflect current state if any
+      });
+      
+      netlifyIdentity.on('open', () => {
+        console.log('Auth.astro: Netlify Identity modal opened.');
+        showAuthMessage('', 'info'); // Clear previous custom messages when modal opens
+      });
 
-    } catch (err) {
-      console.error('Error calling set-user-data:', err);
-      showAuthMessage(`Profile sync failed: ${err.message}`, 'error');
-      document.dispatchEvent(new CustomEvent('userProfileUpdated', { detail: null, error: err.message }));
-    }
-  }
-
-  function initializeNetlifyIdentity() {
-    if (window.netlifyIdentityInitialized) {
-      console.log("Netlify Identity already initialized by this script.");
-      return;
-    }
-    window.netlifyIdentityInitialized = true;
-
-    const netlifyIdentity = window.netlifyIdentity;
-    if (!netlifyIdentity) {
-        console.error("Netlify Identity widget not loaded onto window object.");
-        showAuthMessage("Authentication service failed to load properly.", "error");
-        return;
-    }
-     
-    console.log("Dispatching netlifyIdentityReady event.");
-    window.dispatchEvent(new Event('netlifyIdentityReady'));
-
-    netlifyIdentity.on('init', (user) => {
-      console.log('Netlify Identity: init event. User:', user);
-      updateAuthDisplay(user);
-      if (user) {
-        document.dispatchEvent(new CustomEvent('userLoggedIn', { detail: user }));
-        const userDataToSync = getCustomSignupDataForSync(user);
-        if (userDataToSync.username) syncUserDataWithBackend(user, userDataToSync);
-      } else {
+      // Initial state check
+      const currentUser = netlifyIdentity.currentUser();
+      console.log("Auth.astro: Initial check for current user:", currentUser ? currentUser.email : 'None');
+      updateAuthDisplay(currentUser);
+      if (currentUser && currentUser.token && currentUser.token.access_token) {
+        document.dispatchEvent(new CustomEvent('userLoggedIn', { detail: currentUser }));
+      } else if (!currentUser) {
         document.dispatchEvent(new CustomEvent('userLoggedOut'));
       }
-    });
-
-    netlifyIdentity.on('login', (user) => {
-      console.log('Netlify Identity: login event. User:', user);
-      updateAuthDisplay(user);
-      netlifyIdentity.close(); 
-      showAuthMessage('Login successful! Welcome back.', 'success');
-       
-      const userDataToSync = getCustomSignupDataForSync(user);
-      // For login, user_metadata.full_name might be more relevant than localStorage if user already exists.
-      // However, if localStorage has values (e.g., from an interrupted signup), we might want to use them.
-      // The getCustomSignupDataForSync handles this logic.
-      if (userDataToSync.username) syncUserDataWithBackend(user, userDataToSync);
-      document.dispatchEvent(new CustomEvent('userLoggedIn', { detail: user }));
-      
-      // Clear stored custom signup data after successful login/sync
-      localStorage.removeItem('signupUsername');
-      localStorage.removeItem('signupPhone');
-      localStorage.removeItem('signupPlan');
-    });
-
-    netlifyIdentity.on('logout', () => {
-      console.log('Netlify Identity: logout event.');
-     localStorage.removeItem('signupUsername'); 
-      localStorage.removeItem('signupPhone');
-      localStorage.removeItem('signupPlan');
-      updateAuthDisplay(null);
-      showAuthMessage('Logged out successfully.', 'info');
-      document.dispatchEvent(new CustomEvent('userLoggedOut'));
-      netlifyIdentity.close(); 
-
-    });
-
-    netlifyIdentity.on('error', (err) => {
-      console.error('Netlify Identity Error:', err);
-      showAuthMessage(`Auth Error: ${err.message || 'An unknown error occurred.'}`, 'error');
-      const customSignupFields = document.getElementById('custom-signup-fields');
-        const authStatusEl = document.getElementById('auth-status');
-        if (authStatusEl && !netlifyIdentity.currentUser()) { // If no user, means signup/login failed
-             if (customSignupFields) customSignupFields.classList.remove('hidden');
-        }
-        // Clear potentially stale signup data from localStorage on error
-        localStorage.removeItem('signupUsername');
-        localStorage.removeItem('signupPhone');
-        localStorage.removeItem('signupPlan');
-                netlifyIdentity.close(); // Close widget on error to allow retry
-
-    
-    });
-
-    netlifyIdentity.on('open', (modalType) => {
-      console.log('Netlify Identity modal opened:', modalType);
-      // Custom data is already stored in localStorage by the custom signup trigger
-    });
-    
-    const customSignupTrigger = document.getElementById('custom-signup-trigger');
-    const signupUsernameEl = document.getElementById('signup-username');
-    const signupPhoneEl = document.getElementById('signup-phone');
-    const signupPlanEl = document.getElementById('signup-plan');
-
-    if (customSignupTrigger && signupUsernameEl && signupPhoneEl && signupPlanEl) {
-      customSignupTrigger.addEventListener('click', () => {
-        const username = signupUsernameEl.value.trim();
-        const phone = signupPhoneEl.value.trim();
-        const plan = signupPlanEl.value;
-
-        if (!username) {
-          showAuthMessage('Please enter a username to proceed with signup.', 'error');
-          signupUsernameEl.focus();
-          return;
-        }
-        // Phone and plan can be optitonal, add validation if they are mandatory
-        if (!plan) {
-            showAuthMessage('Please select a subscription plan.', 'error');
-            signupPlanEl.focus();
-            return;
-        }
-
-        localStorage.setItem('signupUsername', username);
-        localStorage.setItem('signupPhone', phone); // Store phone even if empty, let backend handle it
-        localStorage.setItem('signupPlan', plan); // Store plan
-        
-        netlifyIdentity.open('signup'); 
-      });
     }
     
-    const currentUser = netlifyIdentity.currentUser();
-    console.log("Auth.astro: Initial check for current user:", currentUser);
-    updateAuthDisplay(currentUser);
-    if (currentUser) {
-      console.log("Auth.astro: Current user exists on init, ensuring login event and sync.");
-      document.dispatchEvent(new CustomEvent('userLoggedIn', { detail: currentUser }));
-      const userDataToSync = getCustomSignupDataForSync(currentUser);
-      if (userDataToSync.username) syncUserDataWithBackend(currentUser, userDataToSync);
-    } else {
-      document.dispatchEvent(new CustomEvent('userLoggedOut'));
-    }
+    // Start the process
+    loadNetlifyIdentityWidget();
   }
-  
-  loadNetlifyIdentityWidget();
-
 </script>
 <style>
-  .netlify-identity-button-container button {
-    margin-top: 0.5rem;
+  .netlify-identity-button-container button { 
+    margin-top: 0.5rem; /* Example Tailwind: mt-2 */
   }
 </style>

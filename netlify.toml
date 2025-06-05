@@ -1,9 +1,18 @@
 # netlify.toml
 
 [build]
-  command = "npm run build" # Or your specific Astro build command (e.g., "astro build")
+  command = "npm run build" # Or your Astro build command
   publish = "dist"          # Astro's default output directory
-  functions = "netlify/functions" # Directory where Netlify Functions are stored
+  functions = "netlify/functions" # Ensure this matches your functions folder
+
+# If you want to redirect to your signup page with an error message from the function
+# (requires modifying the function to return a 302 redirect with query params)
+# Example (conceptual, actual implementation depends on function's return):
+# [[redirects]]
+#   from = "/signup-error" # A path you might redirect to
+#   to = "/signup?error=:error_message"
+#   status = 302
+
 
 # Optional: Redirect rule for cleaner function URLs (not strictly necessary if calling /.netlify/functions/ directly)
 # [[redirects]]

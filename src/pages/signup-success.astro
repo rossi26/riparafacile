@@ -1,0 +1,21 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'; // Adjust path as needed
+---
+<BaseLayout title="Signup Successful">
+  <div class="container mx-auto px-4 py-12">
+    <div class="max-w-md mx-auto text-center p-6 md:p-8 bg-white rounded-xl shadow-lg">
+      <svg class="w-16 h-16 mx-auto text-green-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+      <h1 class="text-2xl md:text-3xl font-semibold text-gray-800 mb-3">Account Creation Initiated!</h1>
+      <p class="text-gray-600 mb-2">
+        Thank you for signing up.
+      </p>
+      <p class="text-gray-600 mb-6 text-sm">
+        If email confirmation is required by our system, please check your inbox (and spam folder) 
+        for a confirmation link to activate your account.
+      </p>
+      <a href="/login/" class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-md transition duration-150 ease-in-out">
+        Proceed to Login
+      </a>
+    </div>
+  </div>
+</BaseLayout>

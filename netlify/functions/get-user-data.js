@@ -6,22 +6,13 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
 let supabase;
 if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
-  supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-      detectSessionInUrl: false
-    }
-  });
+  supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 }
 
 export const handler = async (event, context) => {
   if (!supabase) {
-    console.error('Supabase client not initialized in get-user-data.');
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'Server configuration error: Supabase client not initialized.' }),
-    };
+    console.error('get-user-data: Supabase client not initialized.');
+    return { statusCode: 500, body: JSON.stringify({ error: 'Server configuration error.' }) };
   }
 
   if (event.httpMethod !== 'GET') {
@@ -29,8 +20,9 @@ export const handler = async (event, context) => {
   }
 
   const { user } = context.clientContext;
-  if (!user) {
-    return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized: You must be logged in to fetch user data.' }) };
+  if (!user || !user.token) { // Check for token as well
+    console.warn('get-user-data: Unauthorized - No user context or token.');
+    return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized: You must be logged in.' }) };
   }
 
   const netlify_id = user.sub;
@@ -38,46 +30,27 @@ export const handler = async (event, context) => {
   try {
     const { data: userProfile, error: selectError } = await supabase
       .from('user_profiles')
-      // *** ASSICURATI CHE phone E subscription_plan SIANO QUI ***
-      .select('netlify_id, email, username, created_at, updated_at, phone, subscription_plan')
+      .select('netlify_id, email, name, username, phone, subscription_plan, created_at, updated_at') // Added 'name'
       .eq('netlify_id', netlify_id)
       .single();
 
     if (selectError) {
-      if (selectError.code === 'PGRST116') {
-        return {
-          statusCode: 404,
-          body: JSON.stringify({ error: 'User profile not found in Supabase.' }),
-        };
+      if (selectError.code === 'PGRST116') { // No rows found
+        return { statusCode: 404, body: JSON.stringify({ error: 'User profile not found in Supabase.' }) };
       }
-      console.error('Supabase select error in get-user-data:', selectError);
-      return {
-        statusCode: 500,
-        body: JSON.stringify({ error: 'Failed to query user profile from Supabase.', details: selectError.message }),
-      };
+      console.error('get-user-data: Supabase select error:', selectError);
+      throw selectError;
     }
      
-    if (!userProfile) {
-        console.error('Supabase returned no error and no user profile with .single() in get-user-data. Netlify ID:', netlify_id);
-        return {
-          statusCode: 404,
-          body: JSON.stringify({ error: 'User profile data inexplicably missing after Supabase query.' }),
-        };
+    if (!userProfile) { // Should be caught by PGRST116, but as a safeguard
+        return { statusCode: 404, body: JSON.stringify({ error: 'User profile not found (no data).' }) };
     }
 
-    // *** LOG PER DEBUG: Controlla i log della tua funzione Netlify ***
-    console.log('User profile fetched from Supabase in get-user-data:', userProfile);
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify(userProfile), // Restituisce l'intero oggetto userProfile
-    };
+    console.log('get-user-data: Profile fetched for', netlify_id, userProfile.name);
+    return { statusCode: 200, body: JSON.stringify(userProfile) };
 
   } catch (error) {
-    console.error('Generic error in get-user-data handler:', error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'Failed to fetch user profile due to a server error.', details: error.message || 'Unknown error' }),
-    };
+    console.error('get-user-data: Generic error:', error);
+    return { statusCode: 500, body: JSON.stringify({ error: 'Failed to fetch user profile.', details: error.message })};
   }
 };

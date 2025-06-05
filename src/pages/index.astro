@@ -6,16 +6,31 @@ import PricingCard from '../components/PricingCard.astro';
 import pricingPlans from '../content/data/pricing.json';
 import Auth from '../components/Auth.astro';
 import UserProfile from '../components/UserProfile.astro';
+import UnifiedSignupForm from '../components/UnifiedSignupForm.astro';
+const urlParams = new URLSearchParams(Astro.url.search);
+const successMessage = urlParams.get('message');
+const errorMessage = urlParams.get('error');
+
 ---
 <BaseLayout title="Manutenzione Casa in Abbonamento - Servizio Nazionale">
+    <div class="container mx-auto px-4 py-8">
+    <div class="max-w-lg mx-auto">
+      <UnifiedSignupForm successMessage={successMessage} errorMessage={errorMessage} />
+       <p class="mt-6 text-center text-sm text-gray-600">
+        Already have an account? 
+        <a href="/login/" class="font-medium text-blue-600 hover:text-blue-500"> {/* Link to your login page */}
+          Log in
+        </a>
+      </p>
+    </div>
+  </div>
 
 
-
-    <div class="max-w-lg mx-auto bg-gray-50 p-6 rounded-xl shadow-lg">
+    <!-- <div class="max-w-lg mx-auto bg-gray-50 p-6 rounded-xl shadow-lg">
       <Auth />
       <UserProfile />
     </div>
-    
+     -->
     <section class="mt-12 max-w-2xl mx-auto p-6 bg-blue-50 border border-blue-200 rounded-lg text-blue-800">
       <h2 class="font-semibold text-xl mb-3">How This System Works:</h2>
       <ul class="list-disc list-inside space-y-2 text-sm">
