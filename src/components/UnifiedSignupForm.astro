@@ -1,25 +1,28 @@
 ---
 // src/components/UnifiedSignupForm.astro
-// This form submits data directly to Netlify Forms.
-// A Netlify function will then process this submission.
+// Submits to Netlify Forms. Processed by submission-created.js function.
 const { successMessage, errorMessage } = Astro.props;
+
+// Get site URL for action redirect to ensure it works in previews and production
+const siteUrl = Astro.site ? String(Astro.site) : '/';
+const successRedirect = new URL("/signup-success/", siteUrl).pathname; // Or your desired success page path
 ---
 <div class="p-4 border border-gray-300 rounded-lg shadow-md bg-white">
   <h2 class="text-xl font-semibold mb-4 text-gray-700">Create Your Account</h2>
 
-  {successMessage && <div class="mb-4 p-3 rounded-md bg-green-100 text-green-700">{successMessage}</div>}
-  {errorMessage && <div class="mb-4 p-3 rounded-md bg-red-100 text-red-700">{errorMessage}</div>}
+  {successMessage && <div class="mb-4 p-3 rounded-md bg-green-100 text-green-700" set:html={successMessage} />}
+  {errorMessage && <div class="mb-4 p-3 rounded-md bg-red-100 text-red-700" set:html={errorMessage} />}
 
   <form
     name="unified-signup"
     method="POST"
     data-netlify="true"
     data-netlify-honeypot="bot-field"
-    action="/signup-success/" {/* Your desired success page */}
+    action={successRedirect} 
     class="space-y-4"
   >
     <input type="hidden" name="form-name" value="unified-signup" />
-    <p class="hidden">
+    <p class="hidden"> {/* Honeypot for spam */}
       <label>
         Don’t fill this out if you’re human: <input name="bot-field" />
       </label>
@@ -27,72 +30,32 @@ const { successMessage, errorMessage } = Astro.props;
 
     <div>
       <label for="form-name-field" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-      <input
-        type="text"
-        name="name"
-        id="form-name-field"
-        required
-        placeholder="Your full name"
-        class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-      />
+      <input type="text" name="name" id="form-name-field" required placeholder="Your full name" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" />
     </div>
 
     <div>
       <label for="form-email" class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-      <input
-        type="email"
-        name="email"
-        id="form-email"
-        required
-        placeholder="you@example.com"
-        class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-      />
+      <input type="email" name="email" id="form-email" required placeholder="you@example.com" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" />
     </div>
 
     <div>
       <label for="form-password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-      <input
-        type="password"
-        name="password"
-        id="form-password"
-        required
-        minlength="8" 
-        placeholder="Create a password (min. 8 characters)"
-        class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-      />
+      <input type="password" name="password" id="form-password" required minlength="8" placeholder="Create a password (min. 8 characters)" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" />
     </div>
 
     <div>
       <label for="form-username" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
-      <input
-        type="text"
-        name="username"
-        id="form-username"
-        required
-        placeholder="Choose a unique username"
-        class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-      />
+      <input type="text" name="username" id="form-username" required placeholder="Choose a unique username" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" />
     </div>
     
     <div>
       <label for="form-phone" class="block text-sm font-medium text-gray-700 mb-1">Phone Number (Optional)</label>
-      <input
-        type="tel"
-        name="phone"
-        id="form-phone"
-        placeholder="Your phone number"
-        class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-      />
+      <input type="tel" name="phone" id="form-phone" placeholder="Your phone number" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" />
     </div>
 
     <div>
       <label for="form-plan" class="block text-sm font-medium text-gray-700 mb-1">Subscription Plan</label>
-      <select
-        name="subscription_plan"
-        id="form-plan"
-        required
-        class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-      >
+      <select name="subscription_plan" id="form-plan" required class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
         <option value="" disabled selected>Select a plan</option>
         <option value="basic">Basic Plan</option>
         <option value="premium">Premium Plan</option>
@@ -101,16 +64,9 @@ const { successMessage, errorMessage } = Astro.props;
     </div>
 
     <div>
-      <button
-        type="submit"
-        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-md transition duration-150 ease-in-out"
-      >
+      <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-md transition duration-150 ease-in-out">
         Create Account
       </button>
     </div>
   </form>
-  <p class="mt-4 text-xs text-gray-500">
-    By creating an account, you agree to our terms. 
-    Your password will be securely handled by Netlify Identity.
-  </p>
 </div>

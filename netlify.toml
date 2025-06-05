@@ -3,7 +3,16 @@
 [build]
   command = "npm run build" # Or your Astro build command
   publish = "dist"          # Astro's default output directory
-  functions = "netlify/functions" # Ensure this matches your functions folder
+  functions = "netlify/functions" # CRITICAL: Ensure this path is correct
+
+# Optional: If you have a single-page app structure for pages after login,
+# you might need a redirect rule for client-side routing.
+# For a standard Astro MPA, this is usually not needed for login/signup flow itself.
+# [[redirects]]
+#   from = "/*"
+#   to = "/index.html"
+#   status = 200
+
 
 # If you want to redirect to your signup page with an error message from the function
 # (requires modifying the function to return a 302 redirect with query params)
