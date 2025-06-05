@@ -1,5 +1,3 @@
-# netlify.toml
-
 [build]
   command = "npm run build" # Or your Astro build command
   publish = "dist"          # Astro's default output directory
@@ -12,28 +10,3 @@
 #   from = "/*"
 #   to = "/index.html"
 #   status = 200
-
-
-# If you want to redirect to your signup page with an error message from the function
-# (requires modifying the function to return a 302 redirect with query params)
-# Example (conceptual, actual implementation depends on function's return):
-# [[redirects]]
-#   from = "/signup-error" # A path you might redirect to
-#   to = "/signup?error=:error_message"
-#   status = 302
-
-
-# Optional: Redirect rule for cleaner function URLs (not strictly necessary if calling /.netlify/functions/ directly)
-# [[redirects]]
-#   from = "/api/*"
-#   to = "/.netlify/functions/:splat"
-#   status = 200 # Proxy rule
-
-# If you have client-side routing and want all paths to be handled by index.html (common for SPAs, less so for Astro default)
-# [[redirects]]
-#   from = "/*"
-#   to = "/index.html"
-#   status = 200
-
-# Ensure your Astro build command and publish directory match your project setup.
-# The Astro Netlify adapter often handles much of the necessary configuration for functions.
