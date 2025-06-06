@@ -3,9 +3,9 @@
 // Submits to Netlify Forms. Processed by submission-created.js function.
 const { successMessage, errorMessage } = Astro.props;
 
-// Get site URL for action redirect to ensure it works in previews and production
-const siteUrl = Astro.site ? String(Astro.site) : '/';
-const successRedirect = new URL("/signup-success/", siteUrl).pathname; // Or your desired success page path
+// FIX: Changed from using new URL() to a simple string to avoid build errors.
+// The form action will correctly resolve to the root of the site.
+const successRedirect = "/signup-success/"; 
 ---
 <div class="p-4 border border-gray-300 rounded-lg shadow-md bg-white">
   <h2 class="text-xl font-semibold mb-4 text-gray-700">Create Your Account</h2>
