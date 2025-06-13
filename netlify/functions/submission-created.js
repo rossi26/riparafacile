@@ -9,14 +9,6 @@ const {
   SITE_ID 
 } = process.env;
 
-// --- Enhanced Startup Logging ---
-console.log('Function starting up...');
-console.log('Is SUPABASE_URL set?', !!SUPABASE_URL);
-console.log('Is SUPABASE_SERVICE_KEY set?', !!SUPABASE_SERVICE_KEY);
-console.log('Is NETLIFY_ADMIN_ACCESS_TOKEN set?', !!NETLIFY_ADMIN_ACCESS_TOKEN);
-console.log('Is SITE_ID set?', !!SITE_ID);
-// ------------------------------
-
 let supabase;
 if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
   supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
@@ -50,22 +42,34 @@ export const handler = async (event) => {
     return { statusCode: 400, body: JSON.stringify({ error: 'Required fields missing in submission.' }) };
   }
 
+  // --- Start of new debugging steps ---
+  // 1. Trim the token to remove any accidental whitespace from copy-pasting.
+  const trimmedAdminToken = NETLIFY_ADMIN_ACCESS_TOKEN.trim();
+  
+  // 2. Prepare the headers.
+  const apiHeaders = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${trimmedAdminToken}`,
+  };
+
+  // 3. Log information about the token and headers (without exposing the token itself).
+  console.log(`submission-created: Token length is ${trimmedAdminToken.length}.`);
+  console.log(`submission-created: Authorization header is set to "Bearer [token of length ${trimmedAdminToken.length}]".`);
+  // --- End of new debugging steps ---
+
   const identityApiUrl = `https://api.netlify.com/api/v1/sites/${SITE_ID}/users`;
   const userSignupData = {
     email: email,
     password: password,
     user_metadata: { full_name: name },
-    email_confirm: true, // This will send a confirmation email
+    email_confirm: true,
   };
 
   try {
     console.log(`submission-created: Calling Netlify Identity API at ${identityApiUrl}`);
     const identityResponse = await fetch(identityApiUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${NETLIFY_ADMIN_ACCESS_TOKEN}`,
-      },
+      headers: apiHeaders, // Use the prepared headers
       body: JSON.stringify(userSignupData),
     });
 
