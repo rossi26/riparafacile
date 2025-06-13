@@ -1,4 +1,5 @@
 // netlify/functions/submission-created.js
+// A final, simplified test to isolate the Netlify Identity user creation API call.
 import { createClient } from '@supabase/supabase-js';
 import fetch from 'node-fetch';
 
@@ -16,84 +17,77 @@ if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
 
 export const handler = async (event) => {
   if (!supabase || !NETLIFY_ADMIN_ACCESS_TOKEN || !SITE_ID) {
-    const missingVars = [
-        !supabase && "Supabase Client",
-        !NETLIFY_ADMIN_ACCESS_TOKEN && "NETLIFY_ADMIN_ACCESS_TOKEN",
-        !SITE_ID && "SITE_ID"
-    ].filter(Boolean).join(', ');
-    console.error(`submission-created: Missing required environment variables: ${missingVars}.`);
-    return { statusCode: 500, body: JSON.stringify({ error: `Server configuration error. Missing: ${missingVars}` }) };
+    console.error('Final-Test: Missing required environment variables.');
+    return { statusCode: 500, body: JSON.stringify({ error: 'Server configuration error.' }) };
   }
 
   const { payload } = JSON.parse(event.body);
-  const formData = payload.data;
   const formName = payload.form_name;
 
   if (formName !== 'unified-signup') {
     return { statusCode: 200, body: `Ignoring submission for ${formName}.` };
   }
 
-  console.log('submission-created: Processing "unified-signup" form data:', formData);
+  console.log('Final-Test: Processing "unified-signup" form data:', payload.data);
 
-  const { name, email, password, username, phone, subscription_plan } = formData;
+  // Use a hardcoded, unique email for this test to ensure it's not a data issue.
+  // Generate a new random part each time to avoid "user already exists" errors during testing.
+  const randomId = Math.random().toString(36).substring(2, 10);
+  const testEmail = `test-user-${randomId}@example.com`;
+  const testPassword = `password-${randomId}`; // A secure, random password
 
-  if (!name || !email || !password || !username || !subscription_plan) {
-    console.error('submission-created: Required fields missing from submission.');
-    return { statusCode: 400, body: JSON.stringify({ error: 'Required fields missing in submission.' }) };
-  }
+  const identityApiUrl = `https://api.netlify.com/api/v1/sites/${SITE_ID}/users`;
+  const userSignupData = {
+    email: testEmail,
+    password: testPassword,
+    user_metadata: {
+      full_name: "API Test User",
+    },
+    email_confirm: true,
+  };
 
-  // --- Start of new debugging steps ---
-  // 1. Trim the token to remove any accidental whitespace from copy-pasting.
   const trimmedAdminToken = NETLIFY_ADMIN_ACCESS_TOKEN.trim();
-  
-  // 2. Prepare the headers.
   const apiHeaders = {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${trimmedAdminToken}`,
   };
 
-  // 3. Log information about the token and headers (without exposing the token itself).
-  console.log(`submission-created: Token length is ${trimmedAdminToken.length}.`);
-  console.log(`submission-created: Authorization header is set to "Bearer [token of length ${trimmedAdminToken.length}]".`);
-  // --- End of new debugging steps ---
-
-  const identityApiUrl = `https://api.netlify.com/api/v1/sites/${SITE_ID}/users`;
-  const userSignupData = {
-    email: email,
-    password: password,
-    user_metadata: { full_name: name },
-    email_confirm: true,
-  };
-
   try {
-    console.log(`submission-created: Calling Netlify Identity API at ${identityApiUrl}`);
+    console.log(`Final-Test: Attempting to create user with hardcoded data: ${testEmail}`);
     const identityResponse = await fetch(identityApiUrl, {
       method: 'POST',
-      headers: apiHeaders, // Use the prepared headers
+      headers: apiHeaders,
       body: JSON.stringify(userSignupData),
     });
 
     const identityResponseData = await identityResponse.json();
 
     if (!identityResponse.ok) {
-      console.error('submission-created: Netlify Identity user creation FAILED.', {
+      console.error('Final-Test: Netlify Identity user creation FAILED.', {
         status: identityResponse.status,
         statusText: identityResponse.statusText,
         responseData: identityResponseData
       });
-      const userMessage = identityResponseData.message || identityResponseData.msg || 'Failed to create user account.';
-      return { statusCode: identityResponse.status, body: JSON.stringify({ error: userMessage, details: identityResponseData }) };
+      // If this fails with 401, you have isolated the problem.
+      return { 
+        statusCode: identityResponse.status, 
+        body: JSON.stringify({ 
+          message: "FINAL TEST FAILED: The API call to create a user was rejected.",
+          details: identityResponseData 
+        }) 
+      };
     }
 
-    const netlifyIdentityUser = identityResponseData;
-    console.log('submission-created: Netlify Identity user created successfully:', netlifyIdentityUser.id);
+    console.log('Final-Test: Netlify Identity user creation SUCCEEDED. Netlify User ID:', identityResponseData.id);
 
-    console.log(`submission-created: Inserting profile into Supabase for Netlify ID ${netlifyIdentityUser.id}`);
+    // If we get here, the token works! We can proceed to save to Supabase.
+    // We use the actual form data for the Supabase insert.
+    const { name, email, username, phone, subscription_plan } = payload.data;
     const { data: supabaseProfile, error: supabaseError } = await supabase
       .from('user_profiles')
       .insert({
-        netlify_id: netlifyIdentityUser.id,
-        email: netlifyIdentityUser.email,
+        netlify_id: identityResponseData.id,
+        email: email, // Use the original email from the form
         name: name, 
         username: username,
         phone: phone || null,
@@ -103,24 +97,15 @@ export const handler = async (event) => {
       .single();
 
     if (supabaseError) {
-      console.error('submission-created: Supabase insert FAILED:', supabaseError);
-      return {
-        statusCode: 500,
-        body: JSON.stringify({ 
-          error: 'Account created, but profile data could not be saved. Please contact support.', 
-          details: supabaseError.message 
-        }),
-      };
+      console.error('Final-Test: Supabase insert FAILED after successful user creation:', supabaseError);
+      return { statusCode: 500, body: JSON.stringify({ error: 'User account created, but profile data could not be saved.' }) };
     }
 
-    console.log('submission-created: Supabase profile created successfully:', supabaseProfile);
-    return { statusCode: 200, body: JSON.stringify({ message: 'User processing complete.' }) };
+    console.log('Final-Test: Supabase profile created successfully.');
+    return { statusCode: 200, body: JSON.stringify({ message: 'FINAL TEST SUCCEEDED: User processing complete.' }) };
 
   } catch (error) {
-    console.error('submission-created: Unhandled exception in handler:', error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'An unexpected server error occurred during signup.', details: error.message }),
-    };
+    console.error('Final-Test: Unhandled exception in handler:', error);
+    return { statusCode: 500, body: JSON.stringify({ error: 'An unexpected server error occurred during signup.'}) };
   }
 };
